@@ -1,619 +1,628 @@
+<div align="center">
+
 # Financial Fraud Risk Engine
-    
-<p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/Streamlit-1.x-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
-  <img src="https://img.shields.io/badge/Scikit--Learn-ML%20Pipeline-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white" />
-  <img src="https://img.shields.io/badge/SHAP-Explainability-8A2BE2?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Status-Production%20Ready-brightgreen?style=for-the-badge" />
-  <br/>
-</p>
 
-### *A Full-Stack ML System for Real-Time Transaction Risk Scoring, Explainability, and Operational Fraud Analysis*
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-Risk%20Modeling-green)
+![SHAP](https://img.shields.io/badge/SHAP-Explainability-orange)
+![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)
+![Status](https://img.shields.io/badge/Status-Portfolio%20MVP-purple)
+[![CI](https://github.com/AmirhosseinHonardoust/Financial-Fraud-Risk-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AmirhosseinHonardoust/Financial-Fraud-Risk-Engine/actions/workflows/ci.yml)
 
----
+</div>
 
-## Executive Summary
+A production-minded fraud-risk workflow for detecting suspicious transactions with **cost-sensitive thresholding**, **validation**, **explainability**, **reason codes**, **dashboard review**, and **threshold policy artifacts**.
 
-Modern financial systems must process millions of transactions per hour while simultaneously identifying suspicious behavior in milliseconds. Fraud evolves continuously, testing the boundaries of rule-based systems and exploiting predictable model weaknesses.
-
-This repository demonstrates a complete, realistic, modular **fraud detection engine** built using:
-
-* **Python** for data preparation and experimentation
-* **scikit-learn** for model training and inference pipelines
-* **SHAP** for model transparency and governance
-* **Streamlit** for interactive analyst-facing tools
-* **Cost-sensitive thresholding** reflecting business trade-offs
-* **A clean, production-style project layout**
-
-The engine works on the **Synthetic Financial Fraud Dataset**, but the architecture is flexible enough to plug into any real banking pipeline.
-
-This project is not a “model notebook.”
-It is a small **fraud detection platform**, designed to reflect the systems used in real fintech companies.
+> **Important:** This project is a **portfolio and research demo**, not a production fraud detection system.
+>
+> The data is synthetic. The model, thresholds, and reason codes are designed to demonstrate a professional fraud-risk workflow, not to make real financial decisions without expert validation, monitoring, compliance review, and security controls.
 
 ---
 
-# 1. Business Context: Why Fraud Detection Matters
+## Table of Contents
 
-Financial fraud occurs when an unauthorized party initiates a monetary transaction by exploiting weaknesses in user behavior, device security, identity verification, or merchant channels.
-
-The cost is multidimensional:
-
-### Direct Financial Loss
-
-Fraudulent transactions must often be reimbursed, with banks absorbing the loss.
-
-### Reputation & Trust Damage
-
-If users feel unsafe, churn increases and regulatory risk escalates.
-
-### Operational Overhead
-
-False positives → manual reviews → support tickets → internal investigation costs.
-
-### Regulatory Compliance
-
-Modern regulations (PSD2, PCI DSS, AML directives) require:
-
-* Transparency
-* Explainability
-* Audit trails
-* Documented decision logic
-
-This project includes **explainability, logs, model artifacts, and visual documentation** to reflect these requirements.
+- [Project Overview](#project-overview)
+- [What This Project Does](#what-this-project-does)
+- [What This Project Does Not Do](#what-this-project-does-not-do)
+- [Key Features](#key-features)
+- [System Workflow](#system-workflow)
+- [Project Structure](#project-structure)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Synthetic Data Generator](#synthetic-data-generator)
+- [Training and Evaluation](#training-and-evaluation)
+- [Threshold Policy Artifacts](#threshold-policy-artifacts)
+- [Batch Scoring](#batch-scoring)
+- [Streamlit Dashboard](#streamlit-dashboard)
+- [Explainability and Reason Codes](#explainability-and-reason-codes)
+- [Evaluation Metrics](#evaluation-metrics)
+- [Visual Reports](#visual-reports)
+- [Testing and CI](#testing-and-ci)
+- [Code Quality](#code-quality)
+- [Limitations](#limitations)
+- [Responsible Use](#responsible-use)
+- [Future Improvements](#future-improvements)
+- [Tech Stack](#tech-stack)
+- [Author](#author)
+- [License](#license)
 
 ---
 
-# 2. Modeling Philosophy
+## Project Overview
 
-Fraud is not a “normal” ML classification problem.
+Fraud detection is not only a classification problem. Real fraud systems require careful handling of:
 
-It is:
+- class imbalance
+- changing fraud patterns
+- false-positive cost
+- missed-fraud cost
+- human review capacity
+- model interpretability
+- batch scoring and triage
+- validation and monitoring
 
-* **Imbalanced** (fraud is <1–5% of transactions)
-* **Adversarial** (attackers adapt to detection methods)
-* **Temporal** (fraud strategies evolve)
-* **Non-stationary** (data distribution drifts rapidly)
-* **High-stakes** (errors are expensive)
+This project demonstrates an end-to-end fraud-risk workflow using synthetic transaction data. It includes data preparation, model training, cost-sensitive evaluation, threshold search, policy artifacts, scoring, dashboard review, SHAP explainability, and analyst-friendly reason codes.
 
-Therefore, fraud modeling must emphasize:
-
-### Interpretability
-
-You must explain to analysts why a transaction was flagged.
-
-### Stability
-
-Models must handle distribution shifts gracefully.
-
-### Cost sensitivity
-
-Missing a fraud is 10×–100× more expensive than a false alert.
-
-### Human-in-the-loop tooling
-
-Fraud operations teams must investigate and override model decisions.
-
-### Monitoring & governance
-
-Thresholds, FPR, TPR, and drift must be monitored continuously.
-
-This repository demonstrates these concepts through:
-
-* Cost-weighted threshold search
-* Feature preprocessing pipelines
-* SHAP interpretability
-* Visual diagnostics
-* A human-facing dashboard
+The goal is to show how a fraud-risk model can be turned into a **decision-support system**, not just a metric on a notebook.
 
 ---
 
-# 3. Dataset Description
+## What This Project Does
 
-Although synthetic, the dataset includes the same structure as many real fintech transaction logs:
+This project can:
 
-| Feature                 | Why It Matters in Real Fraud                                                  |
-| ----------------------- | ----------------------------------------------------------------------------- |
-| **`amount`**            | Fraud often involves unusually large or unusually small amounts.              |
-| **`hour`**              | Fraud probability increases at unusual times (night-time patterns).           |
-| **`transaction_type`**  | Online transactions tend to have higher fraud rates vs POS/ATM.               |
-| **`merchant_category`** | Fraud patterns emerge around electronics, travel, luxury goods.               |
-| **`country`**           | Geographical anomalies signal compromised accounts.                           |
-| **`device_risk_score`** | Device fingerprinting is a core modern fraud defense.                         |
-| **`ip_risk_score`**     | High-risk IPs (VPNs, Tor, known attack ranges) correlate strongly with fraud. |
-
-Fraud label (`is_fraud`) is deterministic in this dataset, making it perfectly separable, but this project treats the dataset as if it were real by adding:
-
-* Reproducible splits
-* Proper pipelines
-* Explainability
-* Cost-based threshold logic
-
-This makes the system behave like a *real fraud engine*, even if the underlying data is clean.
+- Generate a harder synthetic fraud dataset with overlap and label noise
+- Prepare train/test transaction datasets
+- Train a fraud-risk model using a scikit-learn pipeline
+- Evaluate ROC-AUC, PR-AUC, Brier score, and classification metrics
+- Compare against simple baselines
+- Search thresholds using cost-sensitive metrics
+- Generate threshold policy artifacts for analyst review
+- Score new transaction CSV files
+- Validate required input columns before training or scoring
+- Add fraud probabilities and binary fraud flags
+- Add analyst-friendly reason codes to scored transactions
+- Sort scored outputs by fraud probability
+- Provide a Streamlit dashboard for risk review
+- Display SHAP explanations for selected transactions
+- Run automated tests and CI smoke workflows
 
 ---
 
-# 4. Project Structure Explained in Depth
+## What This Project Does Not Do
 
-Below is a **human-readable explanation** (not just a directory tree):
+This project does **not**:
 
+- Detect real fraud in production
+- Use real banking or payment-network data
+- Guarantee fraud decisions are fair, compliant, or deployable
+- Replace human fraud analysts
+- Replace compliance, legal, or model-risk review
+- Provide real-time streaming detection
+- Include drift monitoring or retraining automation
+- Prove performance on real-world fraud distributions
+
+A production fraud system would need stronger governance, live monitoring, adversarial testing, compliance controls, access control, audit logging, and human escalation workflows.
+
+---
+
+## Key Features
+
+- **Synthetic fraud data generator** with overlap, class imbalance, and label noise
+- **Reusable scikit-learn pipeline** with preprocessing and model training
+- **Data validation** for training and scoring inputs
+- **Cost-sensitive threshold search**
+- **PR-AUC and Brier score** for imbalanced probability evaluation
+- **Baseline comparisons** for majority, prior, and stratified-random strategies
+- **Threshold policy artifacts** for cost, recall, precision, and review-capacity tradeoffs
+- **Batch scoring CLI** for new transaction files
+- **Reason-code generation** for analyst-friendly review
+- **SHAP explainability** for selected transactions
+- **Streamlit dashboard** for interactive review
+- **Unit tests and GitHub Actions CI**
+- **Generated reports and figures** for model evaluation
+
+---
+
+## System Workflow
+
+```text
+Synthetic or raw transactions
+        ↓
+Data preparation and validation
+        ↓
+Train/test split
+        ↓
+Preprocessing + fraud model pipeline
+        ↓
+Evaluation metrics and baselines
+        ↓
+Threshold search and policy artifacts
+        ↓
+Batch scoring
+        ↓
+Dashboard triage + SHAP + reason codes
 ```
-financial-fraud-risk-engine/
+
+---
+
+## Project Structure
+
+```text
+Financial-Fraud-Risk-Engine/
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 │
 ├── data/
-│   ├── raw/                    # Input dataset(s) exactly as received
-│   ├── processed/              # Cleaned, split datasets ready for ML
+│   ├── raw/
+│   │   └── synthetic_fraud_dataset.csv
+│   └── processed/
+│       ├── transactions_train.csv
+│       └── transactions_test.csv
 │
 ├── models/
-│   ├── fraud_pipeline.joblib   # Full sklearn pipeline (preprocess + classifier)
-│   └── threshold.json          # Business-optimized fraud decision threshold
+│   ├── fraud_pipeline.joblib
+│   └── threshold.json
 │
 ├── reports/
-│   ├── metrics/                # Metrics and model evaluation artifacts
-│   └── figures/                # ROC, PR, Confusion Matrix, SHAP
+│   ├── figures/
+│   │   ├── confusion_matrix.png
+│   │   ├── roc_curve.png
+│   │   ├── pr_curve.png
+│   │   ├── calibration_curve.png
+│   │   ├── threshold_cost_curve.png
+│   │   └── threshold_tradeoffs.png
+│   └── metrics/
+│       ├── metrics.json
+│       ├── evaluation_summary.json
+│       ├── threshold_search.json
+│       ├── threshold_search.csv
+│       ├── threshold_policy.json
+│       ├── threshold_policy.csv
+│       └── threshold_policy.md
 │
 ├── src/
-│   ├── data_prep.py            # Cleaning, stratified splits, reproducible data handling
-│   ├── features.py             # Preprocessing + model construction (sklearn pipeline)
-│   ├── train_model.py          # Model training + baseline evaluation
-│   ├── evaluate.py             # Threshold tuning + visual diagnostics
-│   ├── explain.py              # SHAP global explainability
-│   └── score_new_transactions.py  # Batch scoring for new incoming data
+│   ├── config.py
+│   ├── data_prep.py
+│   ├── dashboard_utils.py
+│   ├── evaluate.py
+│   ├── explain.py
+│   ├── features.py
+│   ├── generate_synthetic_data.py
+│   ├── reason_codes.py
+│   ├── score_new_transactions.py
+│   ├── threshold_policy.py
+│   ├── train_model.py
+│   └── validation.py
 │
-├── app.py                      # Streamlit dashboard (analyst-facing UI)
+├── tests/
+│   ├── test_dashboard_helpers.py
+│   ├── test_evaluation_improvements.py
+│   ├── test_project_integrity.py
+│   ├── test_reason_codes.py
+│   ├── test_synthetic_data_generation.py
+│   ├── test_threshold_policy.py
+│   ├── test_validation_and_scoring.py
+│   └── test_workflow_contracts.py
+│
+├── app.py
 ├── requirements.txt
 ├── README.md
 └── LICENSE
 ```
 
-This architecture intentionally mirrors systems used in regulated financial environments.
-
 ---
 
-# 5. Full System Architecture Diagram
+## Installation
 
-```mermaid
-flowchart LR
-    %% Data sources
-    A[Raw CSV<br/>data/raw/synthetic_fraud_dataset.csv]
+### 1. Clone the Repository
 
-    %% Data prep
-    A --> B[Data Prep<br/>src/data_prep.py<br/>Stratified train/test split]
-    B --> B1[Train Set<br/>data/processed/transactions_train.csv]
-    B --> B2[Test Set<br/>data/processed/transactions_test.csv]
-
-    %% Training
-    B1 --> C[Model Training<br/>src/train_model.py]
-    C --> C1[Preprocess + RandomForest Pipeline<br/>src/features.py]
-    C1 --> D[Trained Pipeline<br/>models/fraud_pipeline.joblib]
-    C1 --> E[Base Metrics<br/>reports/metrics/metrics.json]
-
-    %% Threshold tuning & evaluation
-    B2 --> F[Threshold & Evaluation<br/>src/evaluate.py]
-    D --> F
-    F --> G[Best Threshold<br/>models/threshold.json]
-    F --> H[ROC / PR / CM Plots<br/>reports/figures/*.png]
-    F --> I[Threshold Grid Metrics<br/>reports/metrics/threshold_search.json]
-
-    %% Explainability
-    B2 --> J[Global Explainability<br/>src/explain.py]
-    D --> J
-    J --> K[SHAP Summary Plot<br/>reports/figures/shap_summary.png]
-
-    %% Scoring new data
-    A --> L[Batch Scoring<br/>src/score_new_transactions.py]
-    D --> L
-    G --> L
-    L --> M[Scored CSV<br/>fraud_probability + fraud_flag]
-
-    %% Streamlit app
-    subgraph UI[Interactive Dashboard<br/>app.py Streamlit]
-        N[Upload CSV<br/>raw or scored] --> O[Apply Pipeline<br/>use models/fraud_pipeline.joblib]
-        G --> O
-        O --> P[Risk Scores & Flags<br/>fraud_probability / fraud_flag]
-        D --> Q[Local SHAP for Selected Txn]
-        B2 --> Q
-    end
-
-    %% Connections to UI
-    A --> N
-    M --> N
-    D --> O
-    G --> O
-    D --> Q
-    B2 --> Q
-```
----
-
-# 6. End-to-End Pipeline
-
-Let’s walk through a transaction as it flows through the system.
-
----
-
-## 6.1 Data Ingestion
-
-The engine begins with a raw CSV:
-
-* No assumptions about cleanliness
-* No assumptions about schema enforcement
-* Data is placed into `data/raw`
-
-This reflects real ETL pipelines where data arrives from upstream systems like:
-
-* Core banking logs
-* Payment gateway events
-* App telemetry
-* Merchant transaction streams
-
-Raw data is always treated as immutable.
-
----
-
-## 6.2 Data Preparation (`src/data_prep.py`)
-
-This script:
-
-1. Loads raw CSV
-2. Validates columns
-3. Performs quality checks (missing values, types)
-4. Creates **stratified** train/test splits
-5. Saves the results into `data/processed`
-
-### Why stratification?
-
-If the test split accidentally contains 0 fraud cases, every downstream metric becomes meaningless.
-
-This is a common mistake in junior data science projects, and this script prevents it.
-
----
-
-## 6.3 Feature Engineering & Pipeline Definition (`src/features.py`)
-
-A full scikit-learn Pipeline is created, including:
-
-### Categorical → OneHotEncoder
-
-This expands merchant, country, and transaction type into expressive linear features.
-
-### Numerical → StandardScaler
-
-Ensures numeric parameters share similar scale, stabilizing model training.
-
-### Classifier → RandomForestClassifier
-
-Chosen for:
-
-* Robustness
-* Good performance on tabular data
-* Interpretability via SHAP
-* Nonlinearity support
-* Minimal feature engineering requirements
-
-### Why use a Pipelines?
-
-Because:
-
-* It prevents leakage
-* It ensures identical preprocessing in training and inference
-* It serializes cleanly using Joblib
-* It mimics real-world model-serving systems
-
----
-
-## 6.4 Model Training (`src/train_model.py`)
-
-This step:
-
-* Fits the full pipeline on train data
-* Generates baseline metrics (ROC, recall, etc.)
-* Saves the pipeline for inference
-* Produces an auditable metrics JSON
-
-In real fintech operations, metrics logs are required for:
-
-* Validation
-* Governance
-* Audits
-* Model monitoring
-
----
-
-## 6.5 Threshold Optimization (`src/evaluate.py`)
-
-Most portfolios skip this step and instead rely on 0.5 thresholds.
-This is *incorrect* for fraud.
-
-We evaluate thresholds from 0.05 → 0.95 and compute:
-
-* Precision
-* Recall
-* F1
-* Confusion matrix
-* **Business cost** with weighting:
-
-  ```
-  Cost = 10 × False Negative + 1 × False Positive
-  ```
-
-Banks often weight FN at 50× FP, but here 10:1 is used for clarity.
-
-The chosen threshold is saved to:
-
-```
-models/threshold.json
+```bash
+git clone https://github.com/AmirhosseinHonardoust/Financial-Fraud-Risk-Engine.git
+cd Financial-Fraud-Risk-Engine
 ```
 
-This is how real fraud engines tune their trade-offs.
+### 2. Create a Virtual Environment
+
+On Windows CMD:
+
+```cmd
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+On macOS/Linux:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install Requirements
+
+```bash
+pip install -r requirements.txt
+```
 
 ---
 
-## 6.6 Evaluation Figures
+## Quick Start
 
-### Fraud Probability Distribution
+Run the full local workflow:
 
-<img width="1161" height="865" alt="3e56dc21e76039bcb187cfaa01e496bbed8f3c7a7b06b8a7780e666c" src="https://github.com/user-attachments/assets/1461803d-5be4-48fa-9e31-578886789b16" />
+```bash
+python -m src.generate_synthetic_data --rows 3500 --fraud-rate 0.08 --label-noise 0.04 --seed 42 --output data/raw/synthetic_fraud_dataset.csv
+python -m src.data_prep
+python -m src.train_model
+python -m src.evaluate
+python -m src.score_new_transactions data/processed/transactions_test.csv --output_csv reports/metrics/test_scored.csv
+```
 
-Deep explanation:
+Launch the dashboard:
 
-* Synthetic dataset → sharp separability
-* Fraud probability ≈ 1
-* Non-fraud probability ≈ 0
-* Reflects a deterministic fraud generator
-* Useful for educational purposes despite unrealistic perfection
-
----
-
-### Confusion Matrix
-
-<img width="572" height="455" alt="confusion_matrix" src="https://github.com/user-attachments/assets/227764c2-8f18-43c0-8214-3fa5c00ab0e7" />
-
-Deep explanation:
-
-* Zero false positives and false negatives
-* This **never** happens in real fraud data
-* Illustrates why synthetic data is dangerous for benchmarking
-* But excellent for demonstrating workflow and system design
+```bash
+streamlit run app.py
+```
 
 ---
 
-### Precision, Recall Curve
+## Synthetic Data Generator
 
-<img width="448" height="455" alt="pr_curve" src="https://github.com/user-attachments/assets/8d918efb-8dba-46a9-9fc3-0a5ce10aa8eb" />
+The project includes a synthetic fraud-data generator:
 
-Deep explanation:
+```bash
+python -m src.generate_synthetic_data \
+  --rows 3500 \
+  --fraud-rate 0.08 \
+  --label-noise 0.04 \
+  --seed 42 \
+  --output data/raw/synthetic_fraud_dataset.csv
+```
 
-* PR focuses on the minority class
-* Shows nearly perfect performance
-* Real fraud PR curves are typically 0.3–0.8
-* This curve highlights model dominance over the synthetic structure
+The generator creates a harder dataset than a deterministic toy example by adding:
 
----
+- overlapping legitimate and fraud patterns
+- controlled label noise
+- false-positive-looking legitimate transactions
+- lower-risk-looking fraud transactions
+- class imbalance
+- stochastic fraud labels
 
-### ROC Curve
-
-<img width="448" height="455" alt="roc_curve" src="https://github.com/user-attachments/assets/d4adcba4-e3f4-4a4d-9041-2fe91a280993" />
-
-Deep explanation:
-
-* AUC ≈ 1.00
-* Confirms extreme separability
-* Demonstrates the upper bound of model performance
-
----
-
-### Local SHAP Explanation
-
-<img width="1277" height="777" alt="bd554276f200c2a0a141b9e84b1f2b1a29bf0a5aa2cfa091e9c783a1" src="https://github.com/user-attachments/assets/7a171077-d970-4585-a9dd-c1fc0fdca3b9" />
-
-Deep explanation:
-
-* Shows how each feature pushed a single prediction
-* Used by human fraud investigators
-* Provides transparency for disputing decisions
-* Important for appeals in financial regulations
+This makes threshold selection and precision/recall tradeoffs more meaningful.
 
 ---
 
-### Streamlit Dashboard
+## Training and Evaluation
 
-<img width="1095" height="417" alt="Screenshot 2025-12-04 at 17-11-11 Financial Fraud Risk Engine" src="https://github.com/user-attachments/assets/fd4df208-ff4b-4137-9c04-284273ab1f72" />
+Prepare train/test data:
 
-Deep explanation:
+```bash
+python -m src.data_prep
+```
 
-The dashboard simulates a real internal risk tool:
+Train the fraud model:
 
-* Analysts upload data
-* Adjust thresholds
-* Inspect high-risk cases
-* Drill down into SHAP explanations
-* Export flagged transactions
+```bash
+python -m src.train_model
+```
 
-This interaction loop is core to fraud operations.
+Evaluate the model:
 
----
+```bash
+python -m src.evaluate
+```
 
-# 7. Streamlit Application Architecture (Deep Explanation)
+Evaluation outputs include:
 
-The dashboard is not just UI, it's a **fraud investigation console**, consisting of:
-
-### Data Upload Module
-
-Accepts arbitrary CSVs and validates columns.
-
-### Threshold Control Slider
-
-Allows analysts to balance FPs and FNs dynamically.
-
-### Risk Distribution View
-
-Shows population characteristics and model confidence.
-
-### High-Risk Case Ranking
-
-Lists top suspicious transactions based on score.
-
-### SHAP Explanation Panel
-
-Provides reason codes for decision justification.
-
-This is similar to internal tools at:
-
-* Stripe Radar
-* PayPal FraudNet
-* Revolut Risk Engine
-* Monzo Financial Crime Platform
+```text
+reports/metrics/metrics.json
+reports/metrics/evaluation_summary.json
+reports/metrics/threshold_search.json
+reports/metrics/threshold_search.csv
+reports/figures/roc_curve.png
+reports/figures/pr_curve.png
+reports/figures/calibration_curve.png
+reports/figures/threshold_cost_curve.png
+reports/figures/threshold_tradeoffs.png
+reports/figures/confusion_matrix.png
+```
 
 ---
 
-# 8. Explainability & Governance (ML in Regulated Environments)
+## Threshold Policy Artifacts
 
-Financial ML is heavily regulated.
-This project demonstrates best practices:
+Fraud thresholds are business decisions. A low threshold catches more fraud but creates more false positives. A high threshold reduces review volume but can miss fraud.
 
-### Global feature importance
+This project generates policy artifacts to make those tradeoffs easier to inspect:
 
-Ensures the model is not using prohibited or biased features.
+```text
+reports/metrics/threshold_policy.json
+reports/metrics/threshold_policy.csv
+reports/metrics/threshold_policy.md
+```
 
-### Local explanations
+Policy candidates include:
 
-Allows customers to appeal flagged decisions.
+| Policy | Purpose |
+|---|---|
+| `cost_optimized` | Minimizes the configured false-positive / false-negative cost |
+| `balanced_f1` | Balances precision and recall using F1 score |
+| `high_recall` | Prioritizes catching fraud cases |
+| `high_precision` | Prioritizes reducing false positives |
+| `review_capacity` | Keeps the flagged transaction rate within review capacity |
 
-### Serialized artifacts
-
-Provides reproducibility for audits.
-
-### Threshold documentation
-
-Required for internal risk committees.
-
-### Complete training logs
-
-Ensures no hidden processing steps.
-
-Even though synthetic data is used, the workflow is **industry-realistic**.
+> These policies are decision-support artifacts, not automatic approval or rejection rules.
 
 ---
 
-# 9. Batch Scoring Pipeline (`src/score_new_transactions.py`)
+## Batch Scoring
 
-This script mimics an **ML microservice**:
+Score a transaction file:
 
-* Loads the saved pipeline
-* Applies preprocessing identically
-* Computes risk scores
-* Applies the selected threshold
-* Outputs flagged results
+```bash
+python -m src.score_new_transactions data/processed/transactions_test.csv --output_csv reports/metrics/scored_transactions.csv
+```
 
-This replicates how production fraud systems function:
+The scored output includes:
 
-* Kafka streaming
-* Batch ETL scoring
-* Real-time scoring APIs
+| Column | Description |
+|---|---|
+| `fraud_probability` | Model-estimated fraud probability |
+| `fraud_flag` | Binary flag based on the saved or provided threshold |
+| `reason_codes` | Human-readable risk drivers for analyst review |
 
----
-
-# 10. Known Limitations of This Synthetic Setup
-
-### Perfect separability
-
-No real dataset behaves like this.
-
-### No temporal drift
-
-Fraud evolves, this dataset does not.
-
-### No adversarial behavior
-
-Fraudsters adapt; synthetic datasets do not.
-
-### No user-session risk modeling
-
-Real models incorporate behavioral histories.
-
-### No graph-based fraud rings
-
-Real fraud involves rings of connected accounts.
-
-Despite these limitations, the architecture is still **industry-grade**.
+The output is sorted by descending fraud probability so the riskiest transactions appear first.
 
 ---
 
-# 11. Future Roadmap
+## Streamlit Dashboard
 
-A serious fraud system evolves continuously.
-Here are realistic next steps:
+Launch the app:
 
----
+```bash
+streamlit run app.py
+```
 
-## **Phase 1, Model Improvements**
+The dashboard supports:
 
-* Add Gradient Boosting models (XGBoost / LightGBM)
-* Introduce calibration (Platt scaling, isotonic regression)
-* Add temporal features (velocity, bursts, user baselines)
-* Add geolocation and device fingerprinting enrichments
+- uploading transaction CSV files
+- validating uploaded columns
+- adjusting fraud threshold
+- viewing risk distribution
+- reviewing top-risk transactions
+- downloading scored CSV files
+- inspecting selected transactions with SHAP
+- viewing analyst-friendly reason codes
+- checking model metadata and saved threshold
 
----
-
-## **Phase 2, Real-World Fraud Behaviors**
-
-* Simulate fraud rings
-* Add compromised device patterns
-* Add coordinated attacks (same IP hitting many accounts)
-* Add session-based features
-
----
-
-## **Phase 3, Deployment Engineering**
-
-* Convert inference pipeline into FastAPI microservice
-* Containerize with Docker
-* Add CI/CD for model retraining
-* Use MLflow model registry
+The dashboard includes a warning that the data and model are synthetic-demo artifacts.
 
 ---
 
-## **Phase 4, Monitoring & Drift Detection**
+## Explainability and Reason Codes
 
-* Track score distribution drift
-* Track recall on drifted populations
-* Add alerting for sharp changes
+The project includes two explanation layers.
+
+### SHAP explanations
+
+SHAP is used to inspect how transformed model features contribute to an individual prediction.
+
+### Analyst reason codes
+
+Reason codes convert risk signals into short, reviewable explanations, such as:
+
+```text
+High device risk score
+High IP risk score
+Transaction amount is high for this batch
+Transaction occurred during unusual hours
+Merchant category is higher risk in the demo data
+Critical model risk score
+```
+
+Reason codes are not causal explanations. They are analyst-facing summaries to make triage easier.
 
 ---
 
-## **Phase 5, Analyst Tool Enhancements**
+## Evaluation Metrics
 
-* Add case notes & exporting
-* Add reason-code explanations
-* Add multi-transaction user investigation view
-* Add fraud ring graph visualization
+The evaluation layer includes metrics designed for imbalanced fraud-risk workflows.
+
+| Metric | Why it matters |
+|---|---|
+| ROC-AUC | Measures ranking quality across thresholds |
+| Average precision / PR-AUC | More informative for imbalanced fraud datasets |
+| Brier score | Measures probability quality and calibration |
+| Precision | Measures how many flagged cases are actually fraud |
+| Recall | Measures how many fraud cases are caught |
+| False-positive rate | Measures legitimate-user friction |
+| Flagged rate | Estimates review workload |
+| Cost | Encodes false-positive and false-negative tradeoffs |
+
+Example results from the included harder synthetic-data workflow:
+
+| Metric | Example value |
+|---|---:|
+| ROC-AUC | 0.976 |
+| Average precision / PR-AUC | 0.843 |
+| Brier score | 0.052 |
+| Selected threshold | 0.30 |
+| Precision at selected threshold | 0.514 |
+| Recall at selected threshold | 0.961 |
+| Flagged rate | 0.206 |
+
+> These values are from a synthetic demo dataset and should not be interpreted as real-world fraud detection performance.
 
 ---
 
-# 12. Portfolio Value
+## Visual Reports
 
-This repository demonstrates:
+### Model evaluation charts
 
-### Full ML system design
+| ROC Curve | Precision-Recall Curve |
+|---|---|
+| ![ROC curve](reports/figures/roc_curve.png) | ![Precision-recall curve](reports/figures/pr_curve.png) |
+| **Analysis:** ROC-AUC summarizes the model's ranking ability across thresholds. It can look strong even in imbalanced settings, so it should not be used alone. | **Analysis:** PR-AUC is especially useful for fraud detection because the positive class is rare and false positives affect review workload. |
 
-Not just training, full pipeline architecture.
+### Calibration and threshold behavior
 
-### Fraud domain understanding
+| Calibration Curve | Threshold Cost Curve |
+|---|---|
+| ![Calibration curve](reports/figures/calibration_curve.png) | ![Threshold cost curve](reports/figures/threshold_cost_curve.png) |
+| **Analysis:** Calibration shows whether predicted probabilities behave like real probabilities. This matters when thresholds are used for policy decisions. | **Analysis:** The cost curve shows how false-positive and false-negative assumptions affect the selected threshold. |
 
-Critical for fintech interviews.
+<details>
+<summary>Additional threshold tradeoff chart</summary>
 
-### Explainability and governance
+![Threshold tradeoffs](reports/figures/threshold_tradeoffs.png)
 
-Huge differentiator.
+This chart helps compare precision, recall, false-positive rate, and flagged rate across thresholds.
 
-### Realistic engineering skills
+</details>
 
-Pipelines, serialization, reproducibility.
+---
 
-### User-facing tooling
+## Testing and CI
 
-Dashboards show usability thinking.
+Run unit tests locally:
 
-### Production mindset
+```bash
+python -m unittest discover -s tests -v
+```
 
-Thresholds, cost functions, monitoring.
+Compile source files:
+
+```bash
+python -m compileall src app.py tests
+```
+
+The GitHub Actions workflow checks:
+
+- dependency installation
+- source compilation
+- unit tests
+- synthetic-data generation
+- data preparation
+- model training
+- evaluation
+- scoring
+- scored CSV schema validation
+- expected model/report artifacts
+
+CI is defined in:
+
+```text
+.github/workflows/ci.yml
+```
+
+---
+
+## Code Quality
+
+The project separates major responsibilities across modules:
+
+| Module | Purpose |
+|---|---|
+| `src/generate_synthetic_data.py` | Creates harder synthetic fraud data |
+| `src/data_prep.py` | Prepares train/test datasets |
+| `src/features.py` | Builds preprocessing and model pipeline |
+| `src/train_model.py` | Trains and saves the fraud model |
+| `src/evaluate.py` | Evaluates metrics, thresholds, and plots |
+| `src/threshold_policy.py` | Generates threshold policy artifacts |
+| `src/score_new_transactions.py` | Scores new transaction CSV files |
+| `src/validation.py` | Validates training and scoring input schemas |
+| `src/reason_codes.py` | Generates analyst-friendly risk explanations |
+| `src/dashboard_utils.py` | Provides dashboard helper logic |
+| `src/explain.py` | Provides SHAP explanation utilities |
+
+---
+
+## Limitations
+
+This project has important limitations:
+
+- The data is synthetic, not real financial data
+- Results do not prove real-world fraud detection performance
+- Reason codes are heuristic and not causal explanations
+- The dashboard is a demo, not a secure fraud operations platform
+- No live monitoring or drift detection is included
+- No real-time streaming inference is included
+- No compliance or fairness review is included
+- No adversarial fraud adaptation loop is included
+- Threshold policies are examples, not business-approved rules
+
+The project is strongest as a portfolio demonstration of fraud-risk workflow design.
+
+---
+
+## Responsible Use
+
+This repository is intended for:
+
+- learning fraud-risk modeling workflows
+- demonstrating cost-sensitive evaluation
+- practicing model validation and scoring
+- showing explainability and dashboard design
+- portfolio demonstration
+
+It should not be used as-is for:
+
+- real fraud decisions
+- payment blocking
+- account closure
+- law-enforcement reporting
+- credit or lending decisions
+- high-stakes automated decisions
+
+Any real deployment would require expert review, monitoring, governance, security controls, and compliance validation.
+
+---
+
+## Future Improvements
+
+Potential next improvements:
+
+- Add drift simulation and drift monitoring
+- Add calibration model comparison
+- Add time-based train/test split
+- Add reviewer feedback loop
+- Add FastAPI scoring endpoint
+- Add Docker support
+- Add model card and data statement
+- Add fairness and subgroup analysis
+- Add model registry-style metadata
+- Add alerting and monitoring examples
+- Add richer transaction sequence features
+
+---
+
+## Tech Stack
+
+- Python
+- pandas
+- NumPy
+- scikit-learn
+- SHAP
+- Streamlit
+- matplotlib
+- joblib
+- unittest
+- GitHub Actions
+
+---
+
+## Author
+
+**Amir Honardoust**
+
+GitHub: [@AmirhosseinHonardoust](https://github.com/AmirhosseinHonardoust)
+
+---
+
+## License
+
+This project is intended for educational and portfolio purposes.
+
+If you use or modify this project, please keep the responsible-use notes and limitations clear.
