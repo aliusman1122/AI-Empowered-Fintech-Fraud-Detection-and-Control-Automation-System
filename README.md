@@ -345,6 +345,8 @@ reports/metrics/threshold_policy.md
 
 Policy candidates include:
 
+<div align="center">
+
 | Policy | Purpose |
 |---|---|
 | `cost_optimized` | Minimizes the configured false-positive / false-negative cost |
@@ -352,6 +354,7 @@ Policy candidates include:
 | `high_recall` | Prioritizes catching fraud cases |
 | `high_precision` | Prioritizes reducing false positives |
 | `review_capacity` | Keeps the flagged transaction rate within review capacity |
+</div>
 
 > These policies are decision-support artifacts, not automatic approval or rejection rules.
 
@@ -367,11 +370,14 @@ python -m src.score_new_transactions data/processed/transactions_test.csv --outp
 
 The scored output includes:
 
+<div align="center">
+
 | Column | Description |
 |---|---|
 | `fraud_probability` | Model-estimated fraud probability |
 | `fraud_flag` | Binary flag based on the saved or provided threshold |
 | `reason_codes` | Human-readable risk drivers for analyst review |
+</div>
 
 The output is sorted by descending fraud probability so the riskiest transactions appear first.
 
@@ -430,6 +436,8 @@ Reason codes are not causal explanations. They are analyst-facing summaries to m
 
 The evaluation layer includes metrics designed for imbalanced fraud-risk workflows.
 
+<div align="center">
+
 | Metric | Why it matters |
 |---|---|
 | ROC-AUC | Measures ranking quality across thresholds |
@@ -440,8 +448,11 @@ The evaluation layer includes metrics designed for imbalanced fraud-risk workflo
 | False-positive rate | Measures legitimate-user friction |
 | Flagged rate | Estimates review workload |
 | Cost | Encodes false-positive and false-negative tradeoffs |
+</div>
 
 Example results from the included harder synthetic-data workflow:
+
+<div align="center">
 
 | Metric | Example value |
 |---|---:|
@@ -452,6 +463,7 @@ Example results from the included harder synthetic-data workflow:
 | Precision at selected threshold | 0.514 |
 | Recall at selected threshold | 0.961 |
 | Flagged rate | 0.206 |
+</div>
 
 > These values are from a synthetic demo dataset and should not be interpreted as real-world fraud detection performance.
 
@@ -461,24 +473,33 @@ Example results from the included harder synthetic-data workflow:
 
 ### Model evaluation charts
 
+<div align="center">
+
 | ROC Curve | Precision-Recall Curve |
 |---|---|
 | ![ROC curve](reports/figures/roc_curve.png) | ![Precision-recall curve](reports/figures/pr_curve.png) |
 | **Analysis:** ROC-AUC summarizes the model's ranking ability across thresholds. It can look strong even in imbalanced settings, so it should not be used alone. | **Analysis:** PR-AUC is especially useful for fraud detection because the positive class is rare and false positives affect review workload. |
+</div>
 
 ### Calibration and threshold behavior
+
+<div align="center">
 
 | Calibration Curve | Threshold Cost Curve |
 |---|---|
 | ![Calibration curve](reports/figures/calibration_curve.png) | ![Threshold cost curve](reports/figures/threshold_cost_curve.png) |
 | **Analysis:** Calibration shows whether predicted probabilities behave like real probabilities. This matters when thresholds are used for policy decisions. | **Analysis:** The cost curve shows how false-positive and false-negative assumptions affect the selected threshold. |
+</div>
 
 <details>
 <summary>Additional threshold tradeoff chart</summary>
+        
+<div align="center">
 
 ![Threshold tradeoffs](reports/figures/threshold_tradeoffs.png)
 
 This chart helps compare precision, recall, false-positive rate, and flagged rate across thresholds.
+</div>
 
 </details>
 
@@ -523,6 +544,8 @@ CI is defined in:
 
 The project separates major responsibilities across modules:
 
+<div align="center">
+
 | Module | Purpose |
 |---|---|
 | `src/generate_synthetic_data.py` | Creates harder synthetic fraud data |
@@ -536,6 +559,7 @@ The project separates major responsibilities across modules:
 | `src/reason_codes.py` | Generates analyst-friendly risk explanations |
 | `src/dashboard_utils.py` | Provides dashboard helper logic |
 | `src/explain.py` | Provides SHAP explanation utilities |
+</div>
 
 ---
 
