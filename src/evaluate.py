@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+from pathlib import Path
 from typing import Dict, List
 
 import joblib
@@ -28,12 +29,24 @@ from .config import (
     METRICS_DIR,
     MODELS_DIR,
     PROCESSED_DATA_DIR,
+    PROJECT_ROOT,
     TARGET_COL,
     THRESHOLD_GRID,
 )
-from .features import build_pipeline
 from .threshold_policy import save_threshold_policy_artifacts
 from .validation import validate_training_dataframe
+
+
+def as_repo_relative_path(path: Path) -> str:
+    """Return a portable repo-relative path for saved artifacts.
+
+    This prevents JSON artifacts from containing local absolute paths such as:
+    C:\\Users\\Amir\\Desktop\\...
+    """
+    try:
+        return path.resolve().relative_to(PROJECT_ROOT.resolve()).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def load_model_and_data():
@@ -45,6 +58,12 @@ def load_model_and_data():
 
     test_path = PROCESSED_DATA_DIR / "transactions_test.csv"
     train_path = PROCESSED_DATA_DIR / "transactions_train.csv"
+
+    if not train_path.exists():
+        raise FileNotFoundError(f"Training data not found at {train_path}. Run data_prep.py first.")
+
+    if not test_path.exists():
+        raise FileNotFoundError(f"Test data not found at {test_path}. Run data_prep.py first.")
 
     test_df = pd.read_csv(test_path)
     train_df = pd.read_csv(train_path)
@@ -165,12 +184,13 @@ def save_threshold_search_csv(results: List[Dict]) -> None:
         writer.writeheader()
         writer.writerows(results)
 
-    print(f"Saved threshold search CSV to: {path}")
+    print(f"Saved threshold search CSV to: {as_repo_relative_path(path)}")
 
 
 def plot_roc_pr_curves(y_true: np.ndarray, y_proba: np.ndarray) -> None:
     fpr, tpr, _ = roc_curve(y_true, y_proba)
     roc_auc = roc_auc_score(y_true, y_proba)
+
     RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc).plot()
     plt.title("ROC Curve - Fraud Detection")
     roc_path = FIGURES_DIR / "roc_curve.png"
@@ -179,6 +199,7 @@ def plot_roc_pr_curves(y_true: np.ndarray, y_proba: np.ndarray) -> None:
 
     precision, recall, _ = precision_recall_curve(y_true, y_proba)
     avg_precision = average_precision_score(y_true, y_proba)
+
     PrecisionRecallDisplay(
         precision=precision,
         recall=recall,
@@ -189,8 +210,8 @@ def plot_roc_pr_curves(y_true: np.ndarray, y_proba: np.ndarray) -> None:
     plt.savefig(pr_path, bbox_inches="tight")
     plt.close()
 
-    print(f"Saved ROC curve to: {roc_path}")
-    print(f"Saved PR curve to:  {pr_path}")
+    print(f"Saved ROC curve to: {as_repo_relative_path(roc_path)}")
+    print(f"Saved PR curve to:  {as_repo_relative_path(pr_path)}")
 
 
 def plot_calibration(y_true: np.ndarray, y_proba: np.ndarray) -> None:
@@ -207,7 +228,8 @@ def plot_calibration(y_true: np.ndarray, y_proba: np.ndarray) -> None:
     path = FIGURES_DIR / "calibration_curve.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    print(f"Saved calibration curve to: {path}")
+
+    print(f"Saved calibration curve to: {as_repo_relative_path(path)}")
 
 
 def plot_threshold_cost_curve(results: List[Dict]) -> None:
@@ -222,7 +244,8 @@ def plot_threshold_cost_curve(results: List[Dict]) -> None:
     path = FIGURES_DIR / "threshold_cost_curve.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    print(f"Saved threshold cost curve to: {path}")
+
+    print(f"Saved threshold cost curve to: {as_repo_relative_path(path)}")
 
 
 def plot_threshold_tradeoffs(results: List[Dict]) -> None:
@@ -240,7 +263,8 @@ def plot_threshold_tradeoffs(results: List[Dict]) -> None:
     path = FIGURES_DIR / "threshold_tradeoffs.png"
     plt.savefig(path, bbox_inches="tight")
     plt.close()
-    print(f"Saved threshold tradeoff curve to: {path}")
+
+    print(f"Saved threshold tradeoff curve to: {as_repo_relative_path(path)}")
 
 
 def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, threshold: float) -> None:
@@ -267,7 +291,8 @@ def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, threshold: flo
     cm_path = FIGURES_DIR / "confusion_matrix.png"
     plt.savefig(cm_path, bbox_inches="tight")
     plt.close()
-    print(f"Saved confusion matrix to: {cm_path}")
+
+    print(f"Saved confusion matrix to: {as_repo_relative_path(cm_path)}")
 
 
 def main() -> None:
@@ -285,6 +310,7 @@ def main() -> None:
         json.dump(results, f, indent=2)
 
     save_threshold_search_csv(results)
+
     policy_paths = save_threshold_policy_artifacts(
         results,
         best,
@@ -305,7 +331,20 @@ def main() -> None:
         "baseline_metrics": baseline_metrics,
         "cost_false_negative": COST_FALSE_NEGATIVE,
         "cost_false_positive": COST_FALSE_POSITIVE,
-        "threshold_policy_artifacts": {key: str(path) for key, path in policy_paths.items()},
+        "artifacts": {
+            "threshold_search_json": as_repo_relative_path(threshold_search_path),
+            "threshold_search_csv": as_repo_relative_path(METRICS_DIR / "threshold_search.csv"),
+            "threshold_json": as_repo_relative_path(threshold_path),
+            "roc_curve": as_repo_relative_path(FIGURES_DIR / "roc_curve.png"),
+            "pr_curve": as_repo_relative_path(FIGURES_DIR / "pr_curve.png"),
+            "calibration_curve": as_repo_relative_path(FIGURES_DIR / "calibration_curve.png"),
+            "threshold_cost_curve": as_repo_relative_path(FIGURES_DIR / "threshold_cost_curve.png"),
+            "threshold_tradeoffs": as_repo_relative_path(FIGURES_DIR / "threshold_tradeoffs.png"),
+            "confusion_matrix": as_repo_relative_path(FIGURES_DIR / "confusion_matrix.png"),
+        },
+        "threshold_policy_artifacts": {
+            key: as_repo_relative_path(path) for key, path in policy_paths.items()
+        },
     }
 
     summary_path = METRICS_DIR / "evaluation_summary.json"
@@ -316,6 +355,9 @@ def main() -> None:
     print(json.dumps(probability_metrics, indent=2))
     print("\n=== Best threshold based on cost ===")
     print(json.dumps(best, indent=2))
+    print(f"\nSaved evaluation summary to: {as_repo_relative_path(summary_path)}")
+    print(f"Saved selected threshold to:  {as_repo_relative_path(threshold_path)}")
+    print(f"Saved threshold search to:    {as_repo_relative_path(threshold_search_path)}")
 
     plot_roc_pr_curves(y_test.values, y_proba)
     plot_calibration(y_test.values, y_proba)
