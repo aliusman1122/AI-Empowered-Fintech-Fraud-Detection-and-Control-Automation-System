@@ -41,9 +41,20 @@
   },
   "cost_false_negative": 10.0,
   "cost_false_positive": 1.0,
+  "artifacts": {
+    "threshold_search_json": "reports/metrics/threshold_search.json",
+    "threshold_search_csv": "reports/metrics/threshold_search.csv",
+    "threshold_json": "models/threshold.json",
+    "roc_curve": "reports/figures/roc_curve.png",
+    "pr_curve": "reports/figures/pr_curve.png",
+    "calibration_curve": "reports/figures/calibration_curve.png",
+    "threshold_cost_curve": "reports/figures/threshold_cost_curve.png",
+    "threshold_tradeoffs": "reports/figures/threshold_tradeoffs.png",
+    "confusion_matrix": "reports/figures/confusion_matrix.png"
+  },
   "threshold_policy_artifacts": {
-    "json": "C:\\Users\\Amir\\Desktop\\New folder\\Financial-Fraud-Risk-Engine-main\\reports\\metrics\\threshold_policy.json",
-    "csv": "C:\\Users\\Amir\\Desktop\\New folder\\Financial-Fraud-Risk-Engine-main\\reports\\metrics\\threshold_policy.csv",
-    "markdown": "C:\\Users\\Amir\\Desktop\\New folder\\Financial-Fraud-Risk-Engine-main\\reports\\metrics\\threshold_policy.md"
+    "json": "reports/metrics/threshold_policy.json",
+    "csv": "reports/metrics/threshold_policy.csv",
+    "markdown": "reports/metrics/threshold_policy.md"
   }
 }
