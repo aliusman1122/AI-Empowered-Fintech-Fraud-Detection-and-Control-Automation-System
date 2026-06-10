@@ -177,11 +177,11 @@ def explain_single_transaction(model, df_scored: pd.DataFrame, row_idx: int):
 
 def main():
     st.set_page_config(
-        page_title="Financial Fraud Risk Engine",
+        page_title="AI Fintech Fraud Engine",
         layout="wide",
     )
 
-    st.title("Financial Fraud Risk Engine")
+    st.title("AI-Empowered Fintech Fraud Detection and Control Automation System")
     st.markdown(
         """
 This app wraps a trained fraud detection model into an **interactive risk dashboard**.
