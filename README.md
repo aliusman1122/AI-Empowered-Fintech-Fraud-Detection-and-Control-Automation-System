@@ -1,9 +1,9 @@
 # AI-Empowered Fintech Fraud Detection and Control Automation System
 
-[![Python 3.11](https://shields.io)](https://python.org)
-[![FastAPI](https://shields.io)](https://tiangolo.com)
-[![Automation](https://shields.io)](https://n8n.io)
-[![License: MIT](https://shields.io)](https://opensource.org)
+![Python](https://shields.io)
+![FastAPI](https://shields.io)
+![Automation](https://shields.io)
+![License: MIT](https://shields.io)
 
 An enterprise-grade, real-time automated fraud detection and risk mitigation engine designed for modern financial technology and core banking layers.
 
