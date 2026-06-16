@@ -1,8 +1,44 @@
-pandas
-numpy
-scikit-learn
-matplotlib
-seaborn
-joblib
-shap
-streamlit
+# =============================================================================
+# requirements.txt
+# AI-Empowered Fintech Fraud Detection and Control Automation System
+# =============================================================================
+# HOW TO INSTALL:
+#   Make sure your virtual environment is activated (.venv)
+#   Then run: pip install -r requirements.txt
+#
+# WHAT EACH SECTION DOES:
+#   Phase 1-3 packages → Original ML pipeline (do not remove these)
+#   Phase 4 packages   → FastAPI backend you just built
+#   Phase 5 packages   → Email + n8n integration (added now, used later)
+# =============================================================================
+
+# ─── PHASE 1-3: Original ML Pipeline (do not remove) ─────────────────────────
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+joblib>=1.3.0
+shap>=0.44.0
+streamlit>=1.28.0
+
+# ─── PHASE 4: FastAPI Backend ─────────────────────────────────────────────────
+# FastAPI: The web framework for building the API
+fastapi==0.115.0
+
+# Uvicorn: The ASGI server that runs FastAPI (like Flask uses Werkzeug)
+# [standard] adds extras like watchfiles (for --reload) and httptools (for speed)
+uvicorn[standard]==0.30.6
+
+# SQLAlchemy: Python ORM for talking to SQLite/PostgreSQL
+sqlalchemy==2.0.36
+
+# python-multipart: Required by FastAPI to handle form data
+python-multipart==0.0.12
+
+# httpx: HTTP client (for making requests to n8n webhooks from Python)
+httpx==0.27.2
+
+# ─── PHASE 5 (Install now, use in Phase 5): Email + n8n ──────────────────────
+# python-dotenv: Loads environment variables from a .env file (for secrets)
+python-dotenv==1.0.1
