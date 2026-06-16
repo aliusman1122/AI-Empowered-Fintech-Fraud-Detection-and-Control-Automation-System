@@ -101,7 +101,7 @@ Ensure your operating system contains **Python 3.11** and **Git**.
 
 ### 1. Repository Instantiation & Alignment
 ```bash
-git clone https://github.com
+git clone https://github.com/aliusman1122/AI-Empowered-Fintech-Fraud-Detection-and-Control-Automation-System.git
 cd AI-Empowered-Fintech-Fraud-Detection-and-Control-Automation-System
 ```
 
