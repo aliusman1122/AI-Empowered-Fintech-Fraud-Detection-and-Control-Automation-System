@@ -46,6 +46,8 @@ import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+import requests
+
 
 # ─── PATH SETUP ──────────────────────────────────────────────────────────────
 # Add the project root to Python's path so we can import from "src/"
@@ -140,7 +142,8 @@ _threshold = 0.35   # Default threshold (will be overridden from threshold.json)
 # Paths to the model files (relative to project root)
 MODEL_PATH      = os.path.join(PROJECT_ROOT, "models", "fraud_pipeline.joblib")
 THRESHOLD_PATH  = os.path.join(PROJECT_ROOT, "models", "threshold.json")
-
+# n8n Automation Workflow 1 URL (Manually Added)
+N8N_WEBHOOK_URL = "http://localhost:5678/webhook-test/fintech-fraud-alert"
 
 @app.on_event("startup")
 async def load_model_on_startup():
@@ -427,6 +430,21 @@ async def predict_transaction(
             f"Fraud probability: {fraud_probability:.1%}. "
             f"Transaction held pending user confirmation."
         )
+        # 🔥 LIVE N8N AUTOMATION TRIGGER (The Data hits the n8n workf)
+        try:
+            payload = {
+                "transaction_id": str(uuid.uuid4()), # Temporary id for webhook payload if needed
+                "amount": transaction.amount,
+                "merchant_category": transaction.merchant_category,
+                "fraud_probability": round(fraud_probability, 4),
+                "user_email": transaction.user_email
+            }
+            # send the alert to n8n 
+            requests.post(N8N_WEBHOOK_URL, json=payload, timeout=5)
+            logger.info(f"🚀 n8n Automation Webhook Triggered for {transaction.user_email}")
+        except Exception as e:
+            logger.error(f"❌ Failed to trigger n8n webhook: {str(e)}")
+
     else:
         status  = "FLAGGED"
         message = (
