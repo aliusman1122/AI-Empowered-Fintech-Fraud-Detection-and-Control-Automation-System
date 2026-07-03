@@ -374,6 +374,10 @@ async def predict_transaction(
     - probability >= threshold + no email → `FLAGGED`
     - probability >= threshold + email provided → `VERIFICATION_SENT` (Phase 5: sends email via n8n)
     """
+    allowed_categories = [cat.value for cat in schemas.MerchantCategory]
+    if str(transaction.merchant_category).lower().strip() not in allowed_categories:
+        transaction.merchant_category = schemas.MerchantCategory.other
+        
     # ── Step 1: Check model is loaded ──────────────────────────────────────
     if _ml_model is None:
         raise HTTPException(
@@ -461,7 +465,7 @@ async def predict_transaction(
         db_transaction = models.Transaction(
             id                = transaction_id,
             amount            = transaction.amount,
-            hour              = transaction.hour,
+              transaction_hour              = transaction.hour,
             device_risk_score = transaction.device_risk_score,
             ip_risk_score     = transaction.ip_risk_score,
             merchant_category = transaction.merchant_category,
@@ -501,10 +505,21 @@ async def predict_transaction(
             f"status={status}"
         )
 
+    except KeyError as ke:
+        db.rollback()
+        logger.error(f"❌ Payload structural key mismatch: {str(ke)}")
+        raise HTTPException(
+            status_code=422, 
+            detail=f"Data payload structure mismatch: Missing field {str(ke)}"
+        )
     except Exception as e:
         db.rollback()
-        logger.error(f"Database save failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        logger.error(f"❌ Database operational failure: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database persistent storage pipeline failure error: {str(e)}"
+        )
+
 
     # ── Step 9: Return response ────────────────────────────────────────────
     return schemas.PredictionResponse(

@@ -20,12 +20,20 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
-
-
+from pydantic import EmailStr
+from enum import Enum
 # =============================================================================
 # REQUEST SCHEMAS (what the user SENDS to the API)
 # =============================================================================
-
+class MerchantCategory(str, Enum):
+    electronics = "electronics"
+    food = "food"
+    travel = "travel"
+    gambling = "gambling"
+    crypto = "crypto"
+    wire_transfer = "wire_transfer"
+    foreign_exchange = "foreign_exchange"
+    other = "other"
 class TransactionInput(BaseModel):
     """
     The JSON body a user must send to POST /api/v1/transactions/predict.
@@ -71,7 +79,7 @@ class TransactionInput(BaseModel):
     )
 
     # Transaction context
-    merchant_category: str = Field(
+    merchant_category: MerchantCategory = Field(
         ...,
         description="Category of the merchant. Examples: electronics, food, travel, gambling.",
         example="electronics"
@@ -88,7 +96,7 @@ class TransactionInput(BaseModel):
     )
 
     # Email for verification workflow (Phase 5)
-    user_email: Optional[str] = Field(
+    user_email: Optional[EmailStr] = Field(
         default=None,
         description="User's email address. If provided and transaction is suspicious, a verification email is sent.",
         example="user@example.com"

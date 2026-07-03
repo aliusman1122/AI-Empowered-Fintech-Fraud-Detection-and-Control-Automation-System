@@ -1,9 +1,9 @@
 # AI-Empowered Fintech Fraud Detection and Control Automation System
 
-![Python](https://shields.io)
-![FastAPI](https://shields.io)
-![Automation](https://shields.io)
-![License: MIT](https://shields.io)
+[![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green?logo=fastapi)](https://fastapi.tiangolo.com)
+[![n8n](https://img.shields.io/badge/n8n-Automation-orange?logo=n8n)](https://n8n.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 An enterprise-grade, real-time automated fraud detection and risk mitigation engine designed for modern financial technology and core banking layers.
 
@@ -99,7 +99,7 @@ AI-Empowered-Fintech-Fraud-Detection-and-Control-Automation-System/
 ### Prerequisites
 Ensure your operating system contains **Python 3.11** and **Git**.
 
-### 1. Repository Instantiation & Alignment
+### 1. Installation & Setup
 ```bash
 git clone https://github.com/aliusman1122/AI-Empowered-Fintech-Fraud-Detection-and-Control-Automation-System.git
 cd AI-Empowered-Fintech-Fraud-Detection-and-Control-Automation-System

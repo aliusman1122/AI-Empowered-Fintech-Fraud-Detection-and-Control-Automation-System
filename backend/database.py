@@ -1,79 +1,118 @@
-# =============================================================================
-# backend/database.py
-# =============================================================================
-# PURPOSE:
-#   This file sets up our database connection using SQLAlchemy.
-#   SQLAlchemy is a tool that lets us talk to a database using Python
-#   objects instead of raw SQL queries.
-#
-# DATABASE CHOICE:
-#   We use SQLite for now. SQLite stores the entire database in ONE file
-#   (fraud_engine.db) on your computer. No separate database server needed.
-#   Later (Phase 6) we will switch to PostgreSQL for production.
-#
-# HOW IT WORKS:
-#   1. engine      → The actual connection to the database file
-#   2. SessionLocal → A "session" is like a temporary workspace for one request
-#   3. Base        → A base class that our database table models inherit from
-#   4. get_db()    → A function that opens a session, gives it to the API,
-#                    then closes it when the request is done
-# =============================================================================
+"""
+╔══════════════════════════════════════════════════════════════╗
+║           DATABASE CONNECTION SETUP                          ║
+║   Connect the SQLite database with SQLAlchemy                ║
+║                                                              ║
+║   Why to choose SQLite:                                      ║
+║     ✔ No need to Installation (built-in in python)           ║
+║     ✔ There is complete database in a simple .db file        ║
+║     ✔ Easy to update in PostgreSQL later                     ║
+╚══════════════════════════════════════════════════════════════╝
+"""
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import os
 
-# ─── DATABASE URL ─────────────────────────────────────────────────────────────
-# "sqlite:///./fraud_engine.db" means:
-#   - Use SQLite driver
-#   - Create/open a file named "fraud_engine.db" in the current folder
-# When you run the server, this file appears automatically in your project root.
-SQLALCHEMY_DATABASE_URL = "sqlite:///./fraud_engine.db"
+# ─────────────────────────────────────────────────────────────
+# DATABASE URL — define the location of the database file
+# ─────────────────────────────────────────────────────────────
+#
+# Default: SQLite file "fraud_system.db" project root    
+# Production: Set the environment variable DATABASE_URL for PostgreSQL 
+#
+# SQLite format  : sqlite:///./fraud_system.db
+# PostgreSQL format: postgresql://user:password@localhost:5432/fraud_db
+#
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fraud_system.db")
 
-# ─── ENGINE ──────────────────────────────────────────────────────────────────
-# The "engine" is the actual database connection.
-# connect_args={"check_same_thread": False} is REQUIRED for SQLite when using
-# FastAPI (FastAPI uses multiple threads, SQLite needs this flag to allow it).
+
+# ─────────────────────────────────────────────────────────────
+# ENGINE — Actual database connection
+# ─────────────────────────────────────────────────────────────
+#
+# Engine = method to connect to the database
+# connect_args: Allow the multi-threading for SQLite
+#               (FastAPI hendle with multiple requests)
+#
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},  # Only require for SQLite 
+    echo=False   # debug
 )
 
-# ─── SESSION FACTORY ─────────────────────────────────────────────────────────
-# SessionLocal is a factory (a class) that creates database sessions.
-# autocommit=False → We must manually call db.commit() to save changes.
-# autoflush=False  → Changes are not automatically sent to DB before queries.
+
+# ─────────────────────────────────────────────────────────────
+# SESSION FACTORY — Tools for working with Database
+# ─────────────────────────────────────────────────────────────
+#
+# Session = 1 "conversation" with database
+# Every API makes a new session for every request
+# Request end → session automatically close
+#
 SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
+    autocommit=False,   # commit manually (for safety )
+    autoflush=False,    # flush manually (for control )
     bind=engine
 )
 
-# ─── BASE CLASS ───────────────────────────────────────────────────────────────
-# All our database table models (in models.py) will inherit from this Base.
-# This Base keeps track of all the table definitions so SQLAlchemy can
-# create the tables automatically.
+
+# ─────────────────────────────────────────────────────────────
+# BASE CLASS — Every database table class will inherit from this
+# ─────────────────────────────────────────────────────────────
+#
+# when you create a new table class, make sure
+# it inherits from Base, like:
+# class User(Base):
+# it will automatically register the table with SQLAlchemy
+
 Base = declarative_base()
 
 
-# ─── DEPENDENCY FUNCTION ─────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────
+# HELPER FUNCTIONS
+# ─────────────────────────────────────────────────────────────
+
 def get_db():
     """
-    FastAPI dependency that provides a database session per request.
+    FastAPI Dependency Injection function.
 
-    HOW TO USE:
-        In any FastAPI route, add this as a parameter:
-        async def my_route(db: Session = Depends(get_db)):
-            ...
+    How it works:
+      - For every request, a new database session is created
+      - Request handler gets the session object (db) via 'yield'
+      - Request ends → session is automatically closed (cleanup)
+      - 'yield' is used to provide the session to the request handler
 
-    The "yield" keyword makes this a generator:
-        1. Code BEFORE yield: runs at the START of each request (opens session)
-        2. yield db: gives the session to the route function
-        3. Code AFTER yield: runs at the END of each request (closes session)
-
-    The try/finally ensures the session is ALWAYS closed, even if an error occurs.
+    Example usage in FastAPI route:
+      @app.get("/transactions")
+      def get_transactions(db: Session = Depends(get_db)):
+          return db.query(Transaction).all()
     """
     db = SessionLocal()
     try:
-        yield db
+        yield db          # ← Session object is provided to the request handler
     finally:
-        db.close()
+        db.close()        # ← Session is closed after the request is completed
+
+
+def create_tables():
+    """
+    Create the tables in database.
+
+    On first run:
+      - Create the SQLite file "fraud_system.db" in project root
+      - Create 5 tables inside the database file
+
+    On subsequent runs:
+      - No changes will be made if tables already exist
+    Note:
+      - SQLAlchemy use the "CREATE TABLE IF NOT EXISTS" 
+
+    When to call this function:
+      - only once, when the application is first deployed
+      - Run: python -m backend.init_db
+    """
+    Base.metadata.create_all(bind=engine)
+    print("✅ All tables created successfully!")
+    print(f"   Database file: fraud_system.db")

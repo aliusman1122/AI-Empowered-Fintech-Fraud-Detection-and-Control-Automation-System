@@ -1,32 +1,19 @@
-# =============================================================================
-# .gitignore — Phase 4 additions
-# Add these lines to your EXISTING .gitignore file
-# =============================================================================
+.gitignore mein yeh add karo
+# Database file (local hai, GitHub pe nahi jaani chahiye)
+fraud_system.db
 
-# ─── Phase 4: Database file ───────────────────────────────────────────────────
-# The SQLite database file is auto-generated when you run the server.
-# Never commit it to GitHub (it contains transaction data).
-fraud_engine.db
-
-# ─── Environment variables (NEVER commit secrets) ────────────────────────────
-.env
-.env.local
-.env.production
-
-# ─── Python cache ────────────────────────────────────────────────────────────
+# Python cache files
 __pycache__/
-*.py[cod]
+*.pyc
 *.pyo
-.pytest_cache/
 
-# ─── Virtual environment ──────────────────────────────────────────────────────
+# Virtual environment
 .venv/
 venv/
-env/
 
-# ─── VS Code settings ─────────────────────────────────────────────────────────
-.vscode/
+# Environment variables (secret keys yahan hote hain)
+.env
 
-# ─── OS files ─────────────────────────────────────────────────────────────────
+# OS files
 .DS_Store
 Thumbs.db
