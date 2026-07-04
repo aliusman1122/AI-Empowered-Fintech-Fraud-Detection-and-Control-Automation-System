@@ -79,7 +79,7 @@ logger = logging.getLogger("fraud_engine")
 # This is called "database migration" at its simplest form.
 # Safe to run multiple times — it won't overwrite existing data.
 Base.metadata.create_all(bind=engine)
-logger.info("✅ Database tables initialized (SQLite: fraud_engine.db)")
+logger.info(f"✅ Database tables initialized ({engine.name}: {engine.url.database})")
 
 
 # =============================================================================
@@ -463,7 +463,8 @@ async def predict_transaction(
     # ── Step 7: Save to database ───────────────────────────────────────────
     try:
         db_transaction = models.Transaction(
-            id                = transaction_id,
+            transaction_id    = transaction_id,
+            user_id           = None,
             amount            = transaction.amount,
               transaction_hour              = transaction.hour,
             device_risk_score = transaction.device_risk_score,
@@ -481,15 +482,16 @@ async def predict_transaction(
             verification_token= str(uuid.uuid4()) if fraud_flag else None,
         )
         db.add(db_transaction)
+        db.flush()
 
         # ── Step 8: Write audit log ────────────────────────────────────────
         action = "AUTO_APPROVED" if not fraud_flag else (
             "EMAIL_QUEUED" if transaction.user_email else "FLAGGED"
         )
-        log_entry = models.FraudLog(
-            transaction_id = transaction_id,
+        log_entry = models.AuditLog(
+            transaction_id = db_transaction.id,
             action         = action,
-            details        = (
+            description    = (
                 f"Fraud probability: {fraud_probability:.4f} | "
                 f"Risk: {risk_level} | "
                 f"Threshold: {_threshold}"
@@ -572,7 +574,7 @@ async def list_transactions(
 
     return [
         schemas.TransactionListItem(
-            transaction_id    = tx.id,
+            transaction_id    = tx.transaction_id,
             amount            = tx.amount,
             status            = tx.status,
             fraud_probability = tx.fraud_probability,
@@ -605,7 +607,7 @@ async def get_transaction_status(
     """
     tx = (
         db.query(models.Transaction)
-        .filter(models.Transaction.id == transaction_id)
+        .filter(models.Transaction.transaction_id == transaction_id)
         .first()
     )
 
@@ -624,7 +626,7 @@ async def get_transaction_status(
     }
 
     return schemas.TransactionStatusResponse(
-        transaction_id    = tx.id,
+        transaction_id    = tx.transaction_id,
         status            = tx.status,
         fraud_probability = tx.fraud_probability,
         fraud_flag        = tx.fraud_flag,
@@ -668,7 +670,7 @@ async def approve_transaction(
     """
     tx = (
         db.query(models.Transaction)
-        .filter(models.Transaction.id == transaction_id)
+        .filter(models.Transaction.transaction_id == transaction_id)
         .first()
     )
 
@@ -694,10 +696,10 @@ async def approve_transaction(
     tx.updated_at = datetime.utcnow()
 
     # Audit log
-    log_entry = models.FraudLog(
-        transaction_id = transaction_id,
+    log_entry = models.AuditLog(
+        transaction_id = tx.id,
         action         = "USER_APPROVED",
-        details        = "Account holder confirmed: this transaction was made by them.",
+        description    = "Account holder confirmed: this transaction was made by them.",
         performed_by   = "user",
     )
     db.add(log_entry)
@@ -743,7 +745,7 @@ async def reject_transaction(
     """
     tx = (
         db.query(models.Transaction)
-        .filter(models.Transaction.id == transaction_id)
+        .filter(models.Transaction.transaction_id == transaction_id)
         .first()
     )
 
@@ -769,10 +771,10 @@ async def reject_transaction(
     tx.updated_at = datetime.utcnow()
 
     # Audit log
-    log_entry = models.FraudLog(
-        transaction_id = transaction_id,
+    log_entry = models.AuditLog(
+        transaction_id = tx.id,
         action         = "USER_REJECTED",
-        details        = "Account holder confirmed: FRAUD. Transaction rejected and card flagged.",
+        description    = "Account holder confirmed: FRAUD. Transaction rejected and card flagged.",
         performed_by   = "user",
     )
     db.add(log_entry)
@@ -856,14 +858,17 @@ async def get_audit_logs(
 
     Example: GET /api/v1/audit-logs?transaction_id=f47ac10b-...
     """
-    query = db.query(models.FraudLog)
+    query = db.query(models.AuditLog)
 
     if transaction_id:
-        query = query.filter(models.FraudLog.transaction_id == transaction_id)
+        tx = db.query(models.Transaction).filter(models.Transaction.transaction_id == transaction_id).first()
+        if not tx:
+            return []
+        query = query.filter(models.AuditLog.transaction_id == tx.id)
 
     logs = (
         query
-        .order_by(models.FraudLog.timestamp.desc())
+        .order_by(models.AuditLog.created_at.desc())
         .limit(limit)
         .all()
     )
@@ -871,11 +876,11 @@ async def get_audit_logs(
     return [
         schemas.AuditLogItem(
             id             = log.id,
-            transaction_id = log.transaction_id,
+            transaction_id = db.query(models.Transaction).filter(models.Transaction.id == log.transaction_id).first().transaction_id,
             action         = log.action,
-            details        = log.details,
+            details        = log.description,
             performed_by   = log.performed_by,
-            timestamp      = log.timestamp.isoformat() if log.timestamp else None,
+            timestamp      = log.created_at.isoformat() if log.created_at else None,
         )
         for log in logs
     ]

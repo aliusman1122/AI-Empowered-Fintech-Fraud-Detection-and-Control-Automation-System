@@ -22,6 +22,7 @@ uvicorn[standard]>=0.24.0    # Server runner of FastAPI
 # ─── Database (Phase 6) ──────────────────────
 sqlalchemy>=2.0.0            # ORM — Python classes → SQL tables
 alembic>=1.12.0              # Database migrations (schema changes track)
+psycopg2-binary>=2.9.9       # PostgreSQL database adapter
 
 # ─── API Validation (Phase) ─────────────────────────────
 pydantic[email]>=2.4.0       # Data validation + email validation

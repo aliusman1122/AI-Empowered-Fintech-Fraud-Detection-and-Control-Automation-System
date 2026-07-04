@@ -100,6 +100,7 @@ class User(Base):
     email      = Column(String(255),          unique=True,      nullable=False, index=True)
     full_name  = Column(String(255),          nullable=False)
     phone      = Column(String(20),           nullable=True)
+    hashed_password = Column(String(255),     nullable=False, default="unsecured")
     is_active  = Column(Boolean,              default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -150,7 +151,7 @@ class Transaction(Base):
     # ── Identity ──────────────────────────────────────────────
     id             = Column(Integer,   primary_key=True, index=True, autoincrement=True)
     transaction_id = Column(String(50), unique=True, nullable=False, index=True)
-    user_id        = Column(Integer,   ForeignKey("users.id"), nullable=False)
+    user_id        = Column(Integer,   ForeignKey("users.id"), nullable=True)
 
     # ── Transaction Input Fields ───────────────────────────────
     amount             = Column(Float,        nullable=False)
@@ -163,6 +164,12 @@ class Transaction(Base):
     fraud_probability  = Column(Float,   nullable=True)   # ML score (0.0–1.0)
     fraud_flag         = Column(Boolean, nullable=True)   # Threshold ke baad set hota hai
     reason_codes       = Column(Text,    nullable=True)   # JSON string
+    risk_level         = Column(String(20),   nullable=True)
+    risk_score         = Column(Float,        nullable=True)
+    transaction_type   = Column(String(50),   nullable=True)
+    country            = Column(String(50),   nullable=True)
+    user_email         = Column(String(255),  nullable=True)
+    verification_token = Column(String(100),  nullable=True)
 
     # ── Status (State Machine) ─────────────────────────────────
     status = Column(

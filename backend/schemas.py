@@ -20,8 +20,30 @@ from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
-from pydantic import EmailStr
+from pydantic import BaseModel, Field, EmailStr
 from enum import Enum
+
+# =============================================================================
+# AUTH SCHEMAS
+# =============================================================================
+class UserRegister(BaseModel):
+    email: EmailStr
+    full_name: str
+    phone: Optional[str] = None
+    password: str = Field(..., min_length=6)
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user_id: int
+    email: str
+
+class VerifyRequest(BaseModel):
+    action: str = Field(..., description="'approve' or 'reject'")
 # =============================================================================
 # REQUEST SCHEMAS (what the user SENDS to the API)
 # =============================================================================

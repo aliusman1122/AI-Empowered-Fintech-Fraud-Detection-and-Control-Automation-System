@@ -25,7 +25,7 @@ import os
 # SQLite format  : sqlite:///./fraud_system.db
 # PostgreSQL format: postgresql://user:password@localhost:5432/fraud_db
 #
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fraud_system.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/fraud_detection_db")
 
 
 # ─────────────────────────────────────────────────────────────
@@ -33,12 +33,9 @@ DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fraud_system.db")
 # ─────────────────────────────────────────────────────────────
 #
 # Engine = method to connect to the database
-# connect_args: Allow the multi-threading for SQLite
-#               (FastAPI hendle with multiple requests)
 #
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False},  # Only require for SQLite 
     echo=False   # debug
 )
 
@@ -115,4 +112,4 @@ def create_tables():
     """
     Base.metadata.create_all(bind=engine)
     print("✅ All tables created successfully!")
-    print(f"   Database file: fraud_system.db")
+    print(f"   Database: {engine.name} - {engine.url.database}")
