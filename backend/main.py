@@ -59,6 +59,7 @@ if PROJECT_ROOT not in sys.path:
 # ─── INTERNAL IMPORTS ────────────────────────────────────────────────────────
 from backend.database import Base, engine, get_db
 from backend import models, schemas
+from backend.services import auth_service
 
 # ─── LOGGING SETUP ───────────────────────────────────────────────────────────
 # Logging prints informative messages to the terminal as the server runs.
@@ -289,6 +290,60 @@ def build_prediction_dataframe(transaction: schemas.TransactionInput) -> pd.Data
 
 
 # =============================================================================
+# AUTHENTICATION ENDPOINTS
+# =============================================================================
+
+@app.post(
+    "/api/v1/auth/register",
+    tags=["Authentication"],
+    summary="Register a new user",
+)
+async def register(user: schemas.UserRegister, db: Session = Depends(get_db)):
+    # Check if email is already registered
+    existing_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    # Hash the password and save
+    hashed_password = auth_service.get_password_hash(user.password)
+    new_user = models.User(
+        email=user.email,
+        full_name=user.full_name,
+        phone=user.phone,
+        hashed_password=hashed_password
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {
+        "id": new_user.id,
+        "email": new_user.email,
+        "full_name": new_user.full_name,
+        "phone": new_user.phone
+    }
+
+@app.post(
+    "/api/v1/auth/login",
+    response_model=schemas.TokenResponse,
+    tags=["Authentication"],
+    summary="Login and get JWT token",
+)
+async def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == credentials.email).first()
+    if not user or not auth_service.verify_password(credentials.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    
+    # Generate JWT token
+    access_token = auth_service.create_access_token(data={"sub": user.email, "user_id": user.id})
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "email": user.email
+    }
+
+
+# =============================================================================
 # ROOT & HEALTH ENDPOINTS
 # =============================================================================
 
@@ -419,7 +474,10 @@ async def predict_transaction(
     risk_level   = get_risk_level(fraud_probability)
     reason_codes = generate_reason_codes(transaction.dict(), fraud_probability)
 
-    # ── Step 5: Determine transaction status ───────────────────────────────
+    # ── Step 5: Generate unique transaction ID ─────────────────────────────
+    transaction_id = str(uuid.uuid4())
+
+    # ── Step 6: Determine transaction status ───────────────────────────────
     if not fraud_flag:
         status  = "APPROVED"
         message = (
@@ -437,7 +495,7 @@ async def predict_transaction(
         # 🔥 LIVE N8N AUTOMATION TRIGGER (The Data hits the n8n workf)
         try:
             payload = {
-                "transaction_id": str(uuid.uuid4()), # Temporary id for webhook payload if needed
+                "transaction_id": transaction_id,
                 "amount": transaction.amount,
                 "merchant_category": transaction.merchant_category,
                 "fraud_probability": round(fraud_probability, 4),
@@ -456,9 +514,6 @@ async def predict_transaction(
             f"Fraud probability: {fraud_probability:.1%}. "
             f"Provide user_email to trigger automated verification."
         )
-
-    # ── Step 6: Generate unique transaction ID ─────────────────────────────
-    transaction_id = str(uuid.uuid4())
 
     # ── Step 7: Save to database ───────────────────────────────────────────
     try:
