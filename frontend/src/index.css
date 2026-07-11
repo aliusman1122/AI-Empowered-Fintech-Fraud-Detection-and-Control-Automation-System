@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-slate-100 font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md transition-colors shadow-sm;
+  }
+  .card {
+    @apply bg-slate-800 border border-slate-700 rounded-xl shadow-lg p-6;
+  }
+}
