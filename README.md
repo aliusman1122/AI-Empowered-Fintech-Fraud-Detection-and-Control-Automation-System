@@ -1,142 +1,51 @@
-# AI-Empowered Fintech Fraud Detection and Control Automation System
-
-[![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green?logo=fastapi)](https://fastapi.tiangolo.com)
-[![n8n](https://img.shields.io/badge/n8n-Automation-orange?logo=n8n)](https://n8n.io)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
-
-An enterprise-grade, real-time automated fraud detection and risk mitigation engine designed for modern financial technology and core banking layers.
-
 ---
+# FinGuard: AI-Empowered Fintech Fraud Detection & Control Automation System
 
-## 🎓 Final Year Project / Portfolio Presentation
-- **Author:** Mohammad Usman
-- **University:** Minhaj University Lahore
-- **Supervisor:** Dr. Gulzar Ahmad
-- **Academic Year:** 2026
+FinGuard is a production-grade, high-performance financial risk mitigation platform designed to intercept fraudulent transactions in real time. Combining an asynchronous FastAPI backend engine, an adaptive React dashboard featuring live telemetry synchronization, and an automated n8n orchestration workflow, the system achieves instant "Hold-First" validation and human-in-the-loop closure before financial leakage occurs.
 
----
+## 🏗️ System Architecture & Telemetry Flow
 
-## 🎯 Project Overview & Vision
-Modern financial transaction systems process millions of orders per second. Standard static rules fail against evolving fraud patterns. This system bridges the gap by injecting an **intelligent machine learning inference layer (FastAPI)** between transaction ingestion and bank processing, coupled with an **automated incident management pipeline (n8n)**.
+The ecosystem functions via a three-way state synchronization architecture:
+1. **Ingestion & AI Scoring**: Transactions are intercepted via webhooks and processed by a Python inference node using strict Pydantic model validation. Transactions exceeding the 35% risk threshold are marked for intervention.
+2. **Orchestration Network (n8n)**: High-risk events trigger automated webhooks that put funds on conditional hold and fire asynchronous email alerts containing interactive callback tokens.
+3. **Reactive Frontend Monitoring**: The React dashboard executes a continuous 4-second background heartbeat synchronization (polling loop). It leverages defensive rendering and native filtering layers to compute real-time metrics even during aggregate API micro-outages.
 
-### 🔄 Core Automation Control Loop:
-1. **Ingestion & Ingestion:** Transactions are initiated via the real-time financial web dashboard.
-2. **AI Scoring Model:** A predictive machine learning pipeline calculates an explicit fraud probability score.
-3. **Threshold-based Triage:** 
-   * **Score < 0.35:** Approved immediately. Bank core system executes the ledger release.
-   * **Score ≥ 0.35:** Suspicious flag. Transaction held in escrow, triggering the backend integration layer.
-4. **n8n Outbound Automation:** Webhook fires a live alert payload to n8n, sending an instant context-aware security authorization email to the consumer.
-5. **Interactive User Resolution:**
-   * **If User Approves:** Webhook returns payload to FastAPI -> Status changes to `Approved` -> Bank releases transaction.
-   * **If User Rejects:** Webhook returns payload to FastAPI -> Status changes to `Blocked` -> Cards frozen, security logs generated.
+[ Financial Ingestion UI ] ──(Webhook)──> [ FastAPI Inference Engine ]
+│ (Risk > 35%)
+▼
+[ React Dashboard (4s Poll) ] <──(Sync)─── [ n8n Orchestrator ]
+▲                                           │
+└───────────(Callback Actions)──────────────┴──> [ Step-Up Email Auth ]
 
----
+## 🛠️ Technical Stack & Frameworks
+* **Backend Core**: FastAPI (Python), Pydantic v2 validation, Uvicorn asynchronous server.
+* **Frontend Center**: React.js (Vite), Recharts Engine, Axios Client, Tailwind CSS architecture.
+* **Workflow Automation**: n8n Workflow Automation Server, Interactive Webhook Nodes.
 
-## 🏗️ System Architecture & Data Flow
+## 🚀 Key Features & Defensive Engineering
+* **Zero-Crash Stability Layer**: Implemented rigorous null-safety and runtime try/catch blocks across the UI aggregation stream to process dynamic payloads without rendering drops.
+* **Dynamic Metrics Processing**: Real-time evaluation of `Fraud Alerts`, `Auto-Approved`, and `Pending Verifications` natively computed straight from the polled state data stream.
+* **Bi-directional Webhook Sync**: End-to-end atomic workflow mapping state shifts (`BLOCKED`, `APPROVED`, `VERIFICATION_SENT`) instantaneously across database segments and user client apps.
 
-```text
-[Web Dashboard Dashboard] ---> (Transaction Ingestion) ---> [FastAPI Core Engine]
-                                                                  |
-                                                     [ML Inference Model (0.35)]
-                                                                  |
-                                                    +-------------+-------------+
-
-                                                    | Low Risk                  | High Risk (≥0.35)
-                                                    v                           v
-                                            [Auto-Approved]             [Trigger n8n Webhook]
-                                            (Bank Release)                      |
-                                                                                v
-                                                                     [Email Dispatch to User]
-                                                                                |
-                                                                     +----------+----------+
-
-                                                                     |                     |
-                                                                     v User Approves       v User Rejects
-                                                               [Release Ledger]     [Block & Freeze Account]
-```
-
----
-
-## 🛠️ Technological Ecosystem
-
-### Backend & Machine Learning Stack
-* **Core Language:** Python 3.11 (Isolated using `.venv`)
-* **API Framework:** FastAPI (Asynchronous transaction evaluation gateway)
-* **ML Science Engine:** Scikit-Learn (Pipelines, Imbalanced Class Sampling, Random Forest/Gradient Boosting)
-* **Data Serialization:** Joblib (Binary encapsulation of the trained classification workspace)
-
-### Automation & Storage Infrastructure
-* **Workflow Engine:** n8n Integration Framework (Self-hosted / Local Webhook orchestration)
-* **Relational Ledger:** SQLite / PostgreSQL (Transaction audit logs, status state-machine records)
-* **Container Environment:** Docker & Docker Compose (System stack replication and deployment)
-
----
-
-## 📊 Core Directory Topology
-
-```text
-AI-Empowered-Fintech-Fraud-Detection-and-Control-Automation-System/
-├── .github/workflows/      # Automated CI production test files
-├── backend/                # FastAPI services and endpoint drivers (Phase 4)
-│   ├── main.py             # System core router and gateway definitions
-│   ├── database.py         # Relational database connector layers
-│   ├── models.py           # Table schematics (transactions, verification logs)
-│   └── schemas.py          # Strict Pydantic data validation structural rules
-├── data/                   # Data processing boundaries
-│   ├── raw/                # Synthetic financial base csv distributions
-│   └── processed/          # Training/Testing class stratified dataset splits
-├── models/                 # Frozen predictive model binaries (.joblib)
-├── reports/                # AI analytical artifacts, plots, and json matrix summaries
-├── src/                    # Data preparation and ML model execution runtimes
-└── app.py                  # Live UI demonstration presentation layer
-```
-
----
-
-## 🚀 Installation & Local Workspace Activation
+## 📦 Setup & Deployment Guide
 
 ### Prerequisites
-Ensure your operating system contains **Python 3.11** and **Git**.
+* Python 3.10+
+* Node.js 18+
+* n8n instance setup
 
-### 1. Installation & Setup
+### 1. Backend Installation
 ```bash
-git clone https://github.com/aliusman1122/AI-Empowered-Fintech-Fraud-Detection-and-Control-Automation-System.git
-cd AI-Empowered-Fintech-Fraud-Detection-and-Control-Automation-System
-```
-
-### 2. Environment Insulation & Packages Ingestion
-```bash
-# Windows specific architecture launcher
-py -3.11 -m venv .venv
-.venv\Scripts\activate
-
-# Dependency compilation
+cd backend
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
 ```
 
-### 3. Execution Sequence & Model Pipeline Generation
+### 2. Frontend Installation
 ```bash
-# Ingest baseline evaluation raw files
-python -m src.generate_synthetic_data --rows 3500 --fraud-rate 0.08 --label-noise 0.04 --seed 42 --output data/raw/synthetic_fraud_dataset.csv
-
-# Execute data cleanup and split pipelines
-python -m src.data_prep
-
-# Ingest training constraints and output trained model
-python -m src.train_model
-
-# Run comprehensive metric evaluations
-python -m src.evaluate
+cd frontend
+npm install
+npm run dev
 ```
-
-### 4. Interactive Live System Launch
-```bash
-streamlit run app.py
-```
-Your secure banking control application will automatically resolve onto your visual thread loop at `http://localhost:8501`.
-
----
-
-## 📄 License
-This project is open-source software licensed under the [MIT License](LICENSE).
