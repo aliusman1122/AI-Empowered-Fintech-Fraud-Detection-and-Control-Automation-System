@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fraud-detection-backend
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      # Optional environment configuration
+      - ENVIRONMENT=production
+      
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Passes the backend API URL dynamically so the React built app can connect locally
+        - VITE_API_URL=http://localhost:8000
+    container_name: fraud-detection-frontend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    depends_on:
+      - backend
