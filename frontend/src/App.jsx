@@ -1,49 +1,58 @@
-import { useState, useEffect } from 'react';
-import Sidebar from './components/Sidebar';
-import DashboardMetrics from './components/DashboardMetrics';
-import TransactionForm from './components/TransactionForm';
-import TransactionTable from './components/TransactionTable';
+import { useEffect } from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { subscribeToTransactions } from './services/api';
+import { showInfo } from './lib/toast';
+
+// Layout & Guards
+import ErrorBoundary from './components/ErrorBoundary';
+import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Pages
+import Dashboard from './pages/Dashboard';
+import Transactions from './pages/Transactions';
+import Settings from './pages/Settings';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 function App() {
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
-    const handleRefresh = () => setRefreshTrigger(prev => prev + 1);
+    const queryClient = useQueryClient();
 
     useEffect(() => {
-        const intervalId = setInterval(() => {
-            handleRefresh();
-        }, 4000);
-        return () => clearInterval(intervalId);
-    }, []);
+        const eventSource = subscribeToTransactions((newTxn) => {
+            queryClient.invalidateQueries({ queryKey: ['transactions'] });
+            queryClient.invalidateQueries({ queryKey: ['stats'] });
+            showInfo(`New transaction received: ${newTxn.transaction_id}`);
+        });
+
+        return () => {
+            if (eventSource) eventSource.close();
+        };
+    }, [queryClient]);
 
     return (
-        <div className="flex min-h-screen bg-slate-900">
-            <Sidebar />
-            <div className="flex-1 overflow-auto">
-                <header className="border-b border-slate-800 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
-                    <div className="px-8 py-4 flex items-center justify-between">
-                        <h1 className="text-2xl font-bold text-white tracking-tight">AI Fraud Engine</h1>
-                        <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 rounded-full bg-indigo-600/20 flex items-center justify-center text-indigo-400 font-semibold border border-indigo-500/20">
-                                A
-                            </div>
-                        </div>
-                    </div>
-                </header>
+        <ErrorBoundary>
+            <Toaster position="top-right" />
+            <Routes>
+                {/* Public Auth Routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
 
-                <main className="p-8 max-w-7xl mx-auto space-y-8">
-                    <DashboardMetrics refreshTrigger={refreshTrigger} />
+                {/* Protected Application Layout */}
+                <Route element={<ProtectedRoute />}>
+                    <Route element={<Layout />}>
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
+                        <Route path="/transactions" element={<Transactions />} />
+                        <Route path="/settings" element={<Settings />} />
+                    </Route>
+                </Route>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                        <div className="lg:col-span-1">
-                            <TransactionForm onTransactionSubmitted={handleRefresh} />
-                        </div>
-                        <div className="lg:col-span-2">
-                            <TransactionTable refreshTrigger={refreshTrigger} />
-                        </div>
-                    </div>
-                </main>
-            </div>
-        </div>
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </ErrorBoundary>
     );
 }
 

@@ -11,6 +11,10 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
+import mlflow
+import mlflow.sklearn
+import os
+
 from .config import METRICS_DIR, MODELS_DIR, PROCESSED_DATA_DIR, TARGET_COL
 from .features import build_pipeline
 from .validation import validate_training_dataframe
@@ -42,50 +46,74 @@ def train_and_evaluate() -> dict:
     X_test = test_df.drop(columns=[TARGET_COL])
     y_test = test_df[TARGET_COL]
 
-    pipeline = build_pipeline()
-    pipeline.fit(X_train, y_train)
+    # Setup MLflow
+    mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    mlflow_exp = os.getenv("MLFLOW_EXPERIMENT_NAME", "finguard_fraud_detection")
+    mlflow.set_tracking_uri(mlflow_uri)
+    mlflow.set_experiment(mlflow_exp)
 
-    y_proba = pipeline.predict_proba(X_test)[:, 1]
-    y_pred_default = (y_proba >= 0.5).astype(int)
+    with mlflow.start_run(run_name="train_model"):
+        # We can extract basic params from the pipeline if needed
+        # but for simplicity we log a few high level concepts
+        mlflow.log_param("model_type", "RandomForestClassifier")
+        
+        pipeline = build_pipeline()
+        pipeline.fit(X_train, y_train)
 
-    roc_auc = roc_auc_score(y_test, y_proba)
-    average_precision = average_precision_score(y_test, y_proba)
-    brier_score = brier_score_loss(y_test, y_proba)
+        y_proba = pipeline.predict_proba(X_test)[:, 1]
+        y_pred_default = (y_proba >= 0.5).astype(int)
 
-    cls_report = classification_report(
-        y_test,
-        y_pred_default,
-        output_dict=True,
-        digits=3,
-    )
+        roc_auc = roc_auc_score(y_test, y_proba)
+        average_precision = average_precision_score(y_test, y_proba)
+        brier_score = brier_score_loss(y_test, y_proba)
 
-    metrics = {
-        "roc_auc": float(roc_auc),
-        "average_precision": float(average_precision),
-        "brier_score": float(brier_score),
-        "classification_report_default_threshold": cls_report,
-        "n_train_samples": int(len(y_train)),
-        "n_test_samples": int(len(y_test)),
-        "positive_rate_train": float(y_train.mean()),
-        "positive_rate_test": float(y_test.mean()),
-        "note": (
-            "This synthetic demo dataset is highly separable. Probability metrics should be "
-            "interpreted as workflow checks, not real-world fraud benchmark performance."
-        ),
-    }
+        cls_report = classification_report(
+            y_test,
+            y_pred_default,
+            output_dict=True,
+            digits=3,
+        )
 
-    model_path = MODELS_DIR / "fraud_pipeline.joblib"
-    joblib.dump(pipeline, model_path)
+        metrics = {
+            "roc_auc": float(roc_auc),
+            "average_precision": float(average_precision),
+            "brier_score": float(brier_score),
+            "n_train_samples": int(len(y_train)),
+            "n_test_samples": int(len(y_test)),
+            "positive_rate_train": float(y_train.mean()),
+            "positive_rate_test": float(y_test.mean()),
+        }
 
-    metrics_path = METRICS_DIR / "metrics.json"
-    with metrics_path.open("w") as f:
-        json.dump(metrics, f, indent=2)
+        # Log metrics to MLflow
+        mlflow.log_metrics({
+            "roc_auc": float(roc_auc),
+            "pr_auc": float(average_precision),
+            "brier_score": float(brier_score),
+            "accuracy": cls_report["accuracy"],
+            "precision": cls_report["macro avg"]["precision"],
+            "recall": cls_report["macro avg"]["recall"],
+            "f1_score": cls_report["macro avg"]["f1-score"],
+        })
 
-    print(f"Saved model to:   {model_path}")
-    print(f"Saved metrics to: {metrics_path}")
-    print(f"ROC-AUC (test): {roc_auc:.4f}")
-    print(f"Average precision (test): {average_precision:.4f}")
-    print(f"Brier score (test): {brier_score:.4f}")
+        model_path = MODELS_DIR / "fraud_pipeline.joblib"
+        joblib.dump(pipeline, model_path)
+
+        metrics_path = METRICS_DIR / "metrics.json"
+        with metrics_path.open("w") as f:
+            json.dump(metrics, f, indent=2)
+
+        # Log artifacts and model
+        try:
+            mlflow.log_artifact(str(metrics_path), artifact_path="reports")
+            mlflow.sklearn.log_model(pipeline, "model")
+        except Exception as e:
+            print(f"Warning: Failed to log to MLflow: {e}")
+
+        print(f"Saved model to:   {model_path}")
+        print(f"Saved metrics to: {metrics_path}")
+        print(f"ROC-AUC (test): {roc_auc:.4f}")
+        print(f"Average precision (test): {average_precision:.4f}")
+        print(f"Brier score (test): {brier_score:.4f}")
 
     return metrics
 

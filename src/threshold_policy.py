@@ -222,6 +222,18 @@ def save_threshold_policy_artifacts(
 
     md_path.write_text(_render_markdown_policy(summary), encoding="utf-8")
 
+    try:
+        import mlflow
+        if mlflow.active_run():
+            mlflow.log_param("optimal_threshold", best_threshold.get("threshold"))
+            mlflow.log_artifact(str(json_path), artifact_path="threshold_policy")
+            mlflow.log_artifact(str(csv_path), artifact_path="threshold_policy")
+            mlflow.log_artifact(str(md_path), artifact_path="threshold_policy")
+    except ImportError:
+        pass
+    except Exception as e:
+        print(f"Warning: Failed to log threshold artifacts to MLflow: {e}")
+
     return {
         "json": json_path,
         "csv": csv_path,

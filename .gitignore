@@ -1,19 +1,188 @@
-.gitignore mein yeh add karo
-# Database file (local hai, GitHub pe nahi jaani chahiye)
-fraud_system.db
+# =============================================================================
+# AI-Empowered Fintech Fraud Detection System — .gitignore
+# Generated for public GitHub portfolio release
+# =============================================================================
 
-# Python cache files
+# =============================================================================
+# 1. SECRETS & CREDENTIALS (CRITICAL — never commit)
+# =============================================================================
+.env
+.env.local
+.env.production
+.env.development
+.env.staging
+.env.test
+*.env
+# Keep .env.example tracked so users know what variables are required
+!.env.example
+
+# =============================================================================
+# 2. DATABASE & STORAGE FILES
+# =============================================================================
+*.db
+*.sqlite
+*.sqlite3
+fraud_system.db
+postgres_data/
+
+# =============================================================================
+# 3. PYTHON — Virtual Environments & Cache
+# =============================================================================
+venv/
+.venv/
+env/
+ENV/
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.pyw
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.eggs/
+*.egg-info/
+*.egg
+dist/
+build/
+*.spec
 
-# Virtual environment
-.venv/
-venv/
+# =============================================================================
+# 4. NODE.JS — Dependencies & Build Output
+# =============================================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
 
-# Environment variables (secret keys yahan hote hain)
-.env
+# Frontend build outputs
+frontend/dist/
+frontend/dist-ssr/
+frontend/build/
 
-# OS files
+# =============================================================================
+# 5. MACHINE LEARNING & LARGE BINARY ARTIFACTS
+# =============================================================================
+# Trained model weights — use DVC to version these
+models/*.joblib
+models/*.pkl
+models/*.h5
+models/*.pt
+models/*.pth
+models/*.bin
+models/*.onnx
+# Allow threshold config (small JSON, no secrets)
+!models/threshold.json
+
+# DVC cache & tmp (DVC remote tracks the actual data)
+.dvc/cache/
+.dvc/tmp/
+
+# Raw & processed datasets (large CSVs tracked via DVC)
+data/raw/
+data/processed/
+
+# ML framework caches
+.mlruns/
+mlruns/
+
+# =============================================================================
+# 6. LOGS & RUNTIME FILES
+# =============================================================================
+*.log
+logs/
+*.out
+*.err
+celerybeat-schedule
+celerybeat.pid
+
+# =============================================================================
+# 7. OS & EDITOR TEMPORARY FILES
+# =============================================================================
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# Windows
 Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# JetBrains IDEs (PyCharm, WebStorm, etc.)
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# VS Code — ignore workspace settings but allow launch.json for debugging
+.vscode/*
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Vim / Emacs swap files
+*.swp
+*.swo
+*~
+\#*\#
+
+# =============================================================================
+# 8. TESTING & COVERAGE ARTIFACTS
+# =============================================================================
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+nosetests.xml
+test-results/
+junit.xml
+
+# =============================================================================
+# 9. DOCKER & DEPLOYMENT ARTIFACTS
+# =============================================================================
+# Don't ignore docker-compose.yml (needed for docs)
+# But ignore any generated override files with local secrets
+docker-compose.override.yml
+docker-compose.local.yml
+
+# =============================================================================
+# 10. MISCELLANEOUS
+# =============================================================================
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Byte-compiled / optimised
+*.pyi
+
+# Temporary scripts (dev helpers not meant for production)
+fix_script.py
+inject_auth.py
+inject_ml.py
+migration_tester.py
+migration_tester.bat
+
+# alembic generated env file (regenerated from template)
+# Keep alembic/env.py tracked — it's part of the migration system

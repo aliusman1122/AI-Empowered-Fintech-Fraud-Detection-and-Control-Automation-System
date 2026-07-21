@@ -1,0 +1,26 @@
+groups:
+  - name: finguard_alerts
+    rules:
+      - alert: BackendDown
+        expr: up{job="finguard_backend"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend is down"
+          
+      - alert: HighFraudRate
+        expr: sum(rate(fraud_detection_total{is_fraud="true"}[5m])) / sum(rate(fraud_detection_total[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High fraud rate detected (>10% over 5m)"
+
+      - alert: HighModelLatency
+        expr: histogram_quantile(0.95, sum(rate(model_prediction_latency_seconds_bucket[5m])) by (le)) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ML Model prediction latency 95th percentile is > 500ms"

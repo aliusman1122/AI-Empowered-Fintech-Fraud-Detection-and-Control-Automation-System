@@ -296,11 +296,32 @@ def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray, threshold: flo
 
 
 def main() -> None:
-    model, X_train, y_train, X_test, y_test = load_model_and_data()
-    y_proba = model.predict_proba(X_test)[:, 1]
+    import mlflow
+    import os
+    
+    mlflow_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+    mlflow_exp = os.getenv("MLFLOW_EXPERIMENT_NAME", "finguard_fraud_detection")
+    mlflow.set_tracking_uri(mlflow_uri)
+    mlflow.set_experiment(mlflow_exp)
 
-    probability_metrics = compute_probability_metrics(y_test.values, y_proba)
-    baseline_metrics = compute_baseline_metrics(X_train, y_train, X_test, y_test)
+    # Use active run if started by caller, otherwise start one
+    run = mlflow.active_run()
+    if run is None:
+        run = mlflow.start_run(run_name="evaluate_model")
+        _started_run = True
+    else:
+        _started_run = False
+
+    try:
+        model, X_train, y_train, X_test, y_test = load_model_and_data()
+        y_proba = model.predict_proba(X_test)[:, 1]
+
+        probability_metrics = compute_probability_metrics(y_test.values, y_proba)
+        baseline_metrics = compute_baseline_metrics(X_train, y_train, X_test, y_test)
+    except Exception as e:
+        if _started_run:
+            mlflow.end_run("FAILED")
+        raise e
 
     results = compute_threshold_metrics(y_test.values, y_proba, THRESHOLD_GRID)
     best = pick_best_threshold(results)
@@ -366,6 +387,24 @@ def main() -> None:
 
     y_pred_best = (y_proba >= best["threshold"]).astype(int)
     plot_confusion_matrix(y_test.values, y_pred_best, best["threshold"])
+
+    mlflow.log_metrics({
+        "eval_roc_auc": probability_metrics["roc_auc"],
+        "eval_pr_auc": probability_metrics["average_precision"],
+        "eval_brier_score": probability_metrics["brier_score"]
+    })
+
+    try:
+        for key, file_path in evaluation_summary["artifacts"].items():
+            abs_path = PROJECT_ROOT / file_path
+            if abs_path.exists():
+                mlflow.log_artifact(str(abs_path), artifact_path="evaluation_artifacts")
+        mlflow.log_artifact(str(summary_path), artifact_path="evaluation_artifacts")
+    except Exception as e:
+        print(f"Warning: Failed to log artifacts to MLflow: {e}")
+
+    if _started_run:
+        mlflow.end_run()
 
 
 if __name__ == "__main__":

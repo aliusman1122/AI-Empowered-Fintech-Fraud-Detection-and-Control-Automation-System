@@ -1,11 +1,11 @@
 # Stage 1: Build Environment
-FROM node:18-alpine AS build
+FROM node:20-alpine AS build
 
 WORKDIR /app
 
 # Enable dynamic injection of the API base URL via Docker build context
-ARG VITE_API_URL
-ENV VITE_API_URL=$VITE_API_URL
+ARG VITE_API_BASE_URL
+ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Leverage layer caching by copying package files first
 COPY package.json package-lock.json* ./
@@ -22,14 +22,14 @@ FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 
 # Minimal Nginx configuration with Single Page Application routing fallback
-RUN echo "server { \\
-    listen 80; \\
-    location / { \\
-        root /usr/share/nginx/html; \\
-        index index.html index.htm; \\
-        try_files \$uri \$uri/ /index.html; \\
-    } \\
-}" > /etc/nginx/conf.d/default.conf
+RUN printf 'server {\n\
+    listen 80;\n\
+    location / {\n\
+        root /usr/share/nginx/html;\n\
+        index index.html index.htm;\n\
+        try_files $uri $uri/ /index.html;\n\
+    }\n\
+}\n' > /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 

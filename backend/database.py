@@ -1,115 +1,89 @@
 """
-╔══════════════════════════════════════════════════════════════╗
-║           DATABASE CONNECTION SETUP                          ║
-║   Connect the SQLite database with SQLAlchemy                ║
-║                                                              ║
-║   Why to choose SQLite:                                      ║
-║     ✔ No need to Installation (built-in in python)           ║
-║     ✔ There is complete database in a simple .db file        ║
-║     ✔ Easy to update in PostgreSQL later                     ║
-╚══════════════════════════════════════════════════════════════╝
+=============================================================================
+backend/database.py
+=============================================================================
+PURPOSE:
+  Setup Async PostgreSQL connection using SQLAlchemy 2.x and asyncpg.
+  This removes synchronous blocking bottlenecks from the FastAPI server.
+=============================================================================
 """
 
-from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import os
 
-# ─────────────────────────────────────────────────────────────
-# DATABASE URL — define the location of the database file
-# ─────────────────────────────────────────────────────────────
-#
-# Default: SQLite file "fraud_system.db" project root    
-# Production: Set the environment variable DATABASE_URL for PostgreSQL 
-#
-# SQLite format  : sqlite:///./fraud_system.db
-# PostgreSQL format: postgresql://user:password@localhost:5432/fraud_db
-#
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:password@localhost:5432/fraud_detection_db")
+from backend.core.config import settings
 
+# Unified dynamic DB url loaded directly from validated pydantic BaseSettings
+DATABASE_URL = settings.DATABASE_URL
 
-# ─────────────────────────────────────────────────────────────
-# ENGINE — Actual database connection
-# ─────────────────────────────────────────────────────────────
-#
-# Engine = method to connect to the database
-#
-engine = create_engine(
+# Create the asynchronous engine
+# pool_size=20, max_overflow=30 allows handling high concurrency without DB lockout
+engine = create_async_engine(
     DATABASE_URL,
-    echo=False   # debug
+    echo=False,  # Set to True to see SQL queries in logs
+    pool_pre_ping=True,  # Check connection health before using
+    pool_size=20,
+    max_overflow=30,
 )
 
-
-# ─────────────────────────────────────────────────────────────
-# SESSION FACTORY — Tools for working with Database
-# ─────────────────────────────────────────────────────────────
-#
-# Session = 1 "conversation" with database
-# Every API makes a new session for every request
-# Request end → session automatically close
-#
-SessionLocal = sessionmaker(
-    autocommit=False,   # commit manually (for safety )
-    autoflush=False,    # flush manually (for control )
-    bind=engine
+# Async session factory
+async_session_maker = async_sessionmaker(
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False,
+    autocommit=False,
 )
 
-
-# ─────────────────────────────────────────────────────────────
-# BASE CLASS — Every database table class will inherit from this
-# ─────────────────────────────────────────────────────────────
-#
-# when you create a new table class, make sure
-# it inherits from Base, like:
-# class User(Base):
-# it will automatically register the table with SQLAlchemy
-
+# Base class for SQLAlchemy models
 Base = declarative_base()
 
-
-# ─────────────────────────────────────────────────────────────
-# HELPER FUNCTIONS
-# ─────────────────────────────────────────────────────────────
-
-def get_db():
+async def get_async_session() -> AsyncSession:
     """
-    FastAPI Dependency Injection function.
-
-    How it works:
-      - For every request, a new database session is created
-      - Request handler gets the session object (db) via 'yield'
-      - Request ends → session is automatically closed (cleanup)
-      - 'yield' is used to provide the session to the request handler
-
-    Example usage in FastAPI route:
-      @app.get("/transactions")
-      def get_transactions(db: Session = Depends(get_db)):
-          return db.query(Transaction).all()
+    FastAPI dependency yielding an async database session per request.
+    Closes automatically after the request finishes.
     """
-    db = SessionLocal()
-    try:
-        yield db          # ← Session object is provided to the request handler
-    finally:
-        db.close()        # ← Session is closed after the request is completed
+    async with async_session_maker() as session:
+        yield session
 
 
-def create_tables():
-    """
-    Create the tables in database.
+# =============================================================================
+# BACKWARD-COMPAT SYNC SHIMS
+# =============================================================================
+# auth_service.py imports `get_db` and `SessionLocal` from this module at the
+# module level. These stubs exist solely to prevent ImportError when importing
+# pure-crypto functions (verify_password, create_access_token, etc.) from
+# auth_service. The sync shims are NEVER used in the async request path.
+# DO NOT use SessionLocal in new code — use get_async_session() instead.
 
-    On first run:
-      - Create the SQLite file "fraud_system.db" in project root
-      - Create 5 tables inside the database file
+try:
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker, Session
 
-    On subsequent runs:
-      - No changes will be made if tables already exist
-    Note:
-      - SQLAlchemy use the "CREATE TABLE IF NOT EXISTS" 
+    _SYNC_URL = DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://")
+    _sync_engine   = create_engine(_SYNC_URL, pool_pre_ping=True)
+    SessionLocal   = sessionmaker(bind=_sync_engine, autocommit=False, autoflush=False)
 
-    When to call this function:
-      - only once, when the application is first deployed
-      - Run: python -m backend.init_db
-    """
-    Base.metadata.create_all(bind=engine)
-    print("✅ All tables created successfully!")
-    print(f"   Database: {engine.name} - {engine.url.database}")
+    def get_db():
+        """Sync session dependency kept for backward-compat with auth_service.py."""
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    def create_tables():
+        """Sync helper kept for backward-compat with init_db.py."""
+        Base.metadata.create_all(bind=_sync_engine)
+
+except Exception:
+    # If psycopg2 / sync driver is not available, stub everything out.
+    # The async path is the only one used at runtime in the new architecture.
+    SessionLocal = None  # type: ignore[assignment]
+
+    def get_db():  # type: ignore[misc]
+        raise RuntimeError("Sync DB not configured — use get_async_session() instead.")
+
+    def create_tables():  # type: ignore[misc]
+        raise RuntimeError("Sync DB not configured — use Alembic migrations.")
+

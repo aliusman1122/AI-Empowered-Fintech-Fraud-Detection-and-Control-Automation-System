@@ -1,0 +1,23 @@
+[
+    {
+        "id": 1,
+        "email": "admin@example.com",
+        "role": "admin",
+        "is_verified": true,
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+    },
+    {
+        "id": 2,
+        "email": "user1@example.com",
+        "role": "user",
+        "is_verified": true,
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+    },
+    {
+        "id": 3,
+        "email": "unverified@example.com",
+        "role": "user",
+        "is_verified": false,
+        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
+    }
+]

@@ -1,0 +1,26 @@
+[
+    {
+        "transaction_id": "tx-seed-001",
+        "amount": 150.0,
+        "merchant_category": "food",
+        "transaction_type": "in_person",
+        "country": "US",
+        "fraud_flag": false,
+        "fraud_probability": 0.05,
+        "status": "APPROVED"
+    },
+    {
+        "transaction_id": "tx-seed-002",
+        "amount": 9900.0,
+        "merchant_category": "crypto",
+        "transaction_type": "online",
+        "country": "RU",
+        "fraud_flag": true,
+        "fraud_probability": 0.98,
+        "status": "FLAGGED",
+        "reason_codes": [
+            "high_amount",
+            "high_risk_country"
+        ]
+    }
+]

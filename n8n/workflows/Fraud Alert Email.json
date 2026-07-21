@@ -1,0 +1,104 @@
+{
+  "name": "Fraud Alert Email",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Fraud Alert Email\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
+        "height": 192,
+        "width": 384
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "f922aaf5-24e4-4560-a55f-333ce33e138c",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fintech-fraud-alert",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        64,
+        368
+      ],
+      "id": "45cc3068-7d56-44b8-a9c0-51cf47e88fb6",
+      "name": "Webhook",
+      "webhookId": "9ad7314b-5e06-422e-96b0-b0a7de555a2d"
+    },
+    {
+      "parameters": {
+        "content": "##  n8n Workflow 1 (Fraud Alert Email)\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
+        "height": 400,
+        "width": 640,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -32,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "8c6b383f-c3a1-4d90-ac7a-f53d8d65e5a3",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "fromEmail": "khalilusman927@gmail.com",
+        "toEmail": "={{ $json.body.user_email || 'flintsole014@gmail.com' }}",
+        "subject": "⚠️ CRITICAL: Security Verification Required for Transaction",
+        "html": "=<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>Security Alert - Suspicious Transaction</title>\n</head>\n<body style=\"margin: 0; padding: 0; background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; -webkit-font-smoothing: antialiased;\">\n  \n  <!-- Main Container -->\n  <table role=\"presentation\" width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"background-color: #f4f6f9; padding: 30px 0;\">\n    <tr>\n      <td align=\"center\">\n        <table role=\"presentation\" width=\"600\" cellspacing=\"0\" cellpadding=\"0\" style=\"background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid #e1e8ed;\">\n          \n          <!-- Top Header Bar -->\n          <tr>\n            <td style=\"background-color: #0f172a; padding: 24px 30px; text-align: left;\">\n              <table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\">\n                <tr>\n                  <td>\n                    <h1 style=\"color: #ffffff; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; display: inline-block;\">\n                      FinGuard <span style=\"color: #6366f1; font-weight: 400; font-size: 16px;\">| Fraud Engine</span>\n                    </h1>\n                  </td>\n                  <td align=\"right\">\n                    <span style=\"background-color: #ef4444; color: #ffffff; font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px;\">HIGH RISK ALERT</span>\n                  </td>\n                </tr>\n              </table>\n            </td>\n          </tr>\n\n          <!-- Main Alert Banner -->\n          <tr>\n            <td style=\"padding: 30px 30px 20px 30px; text-align: left;\">\n              <h2 style=\"color: #0f172a; margin: 0 0 10px 0; font-size: 20px; font-weight: 600;\">\n                Action Required: Suspicious Activity Detected\n              </h2>\n              <p style=\"color: #475569; font-size: 15px; line-height: 1.6; margin: 0;\">\n                Dear Customer, our automated security system flagged a high-risk transaction request on your account. Please review the details below immediately.\n              </p>\n            </td>\n          </tr>\n\n          <!-- Transaction Details Box -->\n          <tr>\n            <td style=\"padding: 0 30px 20px 30px;\">\n              <table width=\"100%\" cellspacing=\"0\" cellpadding=\"0\" style=\"background-color: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; border-collapse: separate;\">\n                <tr>\n                  <td style=\"padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600; width: 40%;\">Transaction ID</td>\n                  <td style=\"padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-size: 13px; font-family: monospace; font-weight: 600;\">{{ $json.body.transaction_id || 'TXN-PENDING' }}</td>\n                </tr>\n                <tr>\n                  <td style=\"padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600;\">Amount</td>\n                  <td style=\"padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-size: 15px; font-weight: 700;\">\n                    {{ $json.body.currency || ($json.body.country === 'PK' ? 'PKR' : $json.body.country === 'GB' ? 'GBP' : $json.body.country === 'AE' ? 'AED' : '$') }} {{ $json.body.amount || $json.body.transaction_amount || '0.00' }}\n                  </td>\n                </tr>\n                <tr>\n                  <td style=\"padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600;\">Merchant / Category</td>\n                  <td style=\"padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-size: 13px; font-weight: 500;\">{{ $json.body.merchant_category || $json.body.merchant || 'General Merchant' }}</td>\n                </tr>\n                <tr>\n                  <td style=\"padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px; font-weight: 600;\">Origin Country</td>\n                  <td style=\"padding: 12px 16px; border-bottom: 1px solid #e2e8f0; color: #0f172a; font-size: 13px; font-weight: 500;\">{{ $json.body.country || 'International' }}</td>\n                </tr>\n                <tr>\n                  <td style=\"padding: 12px 16px; color: #64748b; font-size: 13px; font-weight: 600;\">AI Fraud Risk Probability</td>\n                  <td style=\"padding: 12px 16px; color: #dc2626; font-size: 14px; font-weight: 700;\">\n                    {{ (($json.body.fraud_score || $json.body.fraud_probability || 0.85) * 100).toFixed(1) }}% (High Risk)\n                  </td>\n                </tr>\n              </table>\n            </td>\n          </tr>\n\n          <!-- Question Prompt -->\n          <tr>\n            <td style=\"padding: 10px 30px 15px 30px; text-align: center;\">\n              <p style=\"color: #0f172a; font-size: 15px; font-weight: 600; margin: 0;\">\n                Did you authorize this attempt?\n              </p>\n            </td>\n          </tr>\n\n          <!-- CTA Buttons -->\n          <tr>\n            <td style=\"padding: 0 30px 30px 30px;\" align=\"center\">\n              <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\">\n                <tr>\n                  <!-- Approve Button -->\n                  <td align=\"center\" style=\"padding-right: 12px;\">\n                    <a href=\"http://localhost:5678/webhook/transaction-response?action=approve&id={{ $json.body.transaction_id }}\" \n                       style=\"background-color: #16a34a; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);\">\n                       ✓ Yes, I Authorize\n                    </a>\n                  </td>\n                  \n                  <!-- Reject Button -->\n                  <td align=\"center\">\n                    <a href=\"http://localhost:5678/webhook/transaction-response?action=reject&id={{ $json.body.transaction_id }}\" \n                       style=\"background-color: #dc2626; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; display: inline-block; box-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);\">\n                       ✕ No, Block Transaction\n                    </a>\n                  </td>\n                </tr>\n              </table>\n            </td>\n          </tr>\n\n          <!-- Security Note -->\n          <tr>\n            <td style=\"padding: 15px 30px; background-color: #fffbe3; border-top: 1px solid #fef08a; border-bottom: 1px solid #fef08a;\">\n              <p style=\"color: #854d0e; font-size: 12px; margin: 0; line-height: 1.5; text-align: center;\">\n                🔒 <strong>Security Tip:</strong> FinGuard automated systems will never ask for your password or OTP via email. If you did not initiate this, please click Block immediately.\n              </p>\n            </td>\n          </tr>\n\n          <!-- Footer -->\n          <tr>\n            <td style=\"padding: 24px 30px; background-color: #0f172a; text-align: center;\">\n              <p style=\"color: #94a3b8; font-size: 12px; margin: 0 0 6px 0;\">\n                AI-Empowered Fintech Fraud Detection System\n              </p>\n              <p style=\"color: #64748b; font-size: 11px; margin: 0;\">\n                Minhaj University Lahore • Automated Security Monitoring Service\n              </p>\n            </td>\n          </tr>\n\n        </table>\n      </td>\n    </tr>\n  </table>\n\n</body>\n</html>",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        368,
+        368
+      ],
+      "id": "fed1a6c9-f593-4835-aead-06dfea7e12d8",
+      "name": "Send an Email",
+      "webhookId": "9a2ecf89-7171-424b-98c9-d5d3a8810a70",
+      "credentials": {
+        "smtp": {
+          "id": "LX3nnZTzyE3ZLg8V",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "bfae9dc4-ecaa-4b5c-8b08-80d4003bc990",
+  "meta": {
+    "instanceId": "1b727851e7363c90b95febdbdbb95d0a6da35bc5056a56899bc7661fd43d54bc"
+  },
+  "id": "M6MVnzHaC85Imqxh",
+  "tags": []
+}

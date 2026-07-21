@@ -1,0 +1,39 @@
+stages:
+  prepare:
+    cmd: python src/data_prep.py
+    deps:
+      - data/raw/synthetic_fraud_dataset.csv
+      - src/data_prep.py
+    outs:
+      - data/processed/transactions_train.csv
+      - data/processed/transactions_test.csv
+
+  train:
+    cmd: python src/train_model.py
+    deps:
+      - data/processed/transactions_train.csv
+      - data/processed/transactions_test.csv
+      - src/train_model.py
+      - src/features.py
+    outs:
+      - models/fraud_pipeline.joblib
+      - reports/metrics/metrics.json
+
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+      - models/fraud_pipeline.joblib
+      - data/processed/transactions_train.csv
+      - data/processed/transactions_test.csv
+      - src/evaluate.py
+      - src/threshold_policy.py
+    outs:
+      - reports/metrics/evaluation_summary.json
+      - reports/metrics/threshold_search.json
+      - reports/figures/roc_curve.png
+      - reports/figures/pr_curve.png
+
+  threshold:
+    cmd: python src/threshold_policy.py
+    deps:
+      - src/threshold_policy.py

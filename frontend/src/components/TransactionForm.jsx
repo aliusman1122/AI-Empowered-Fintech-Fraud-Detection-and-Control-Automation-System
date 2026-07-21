@@ -1,77 +1,81 @@
 import { useState } from 'react';
-import { predictTransaction } from '../services/api';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { transactionSchema } from '../schemas/transactionSchema';
+import { useCreateTransaction } from '../hooks/useTransactions';
 import { AlertTriangle, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 export default function TransactionForm({ onTransactionSubmitted }) {
-    const [formData, setFormData] = useState({
-        amount: '',
-        hour: '',
-        device_risk_score: '',
-        ip_risk_score: '',
-        merchant_category: 'other',
-        transaction_type: 'online',
-        country: 'US',
-        user_email: ''
+    const { register, handleSubmit, formState: { errors }, reset, watch } = useForm({
+        resolver: zodResolver(transactionSchema),
+        defaultValues: {
+            amount: '',
+            hour: '',
+            device_risk_score: '',
+            ip_risk_score: '',
+            merchant_category: 'other',
+            transaction_type: 'online',
+            country: 'US',
+            user_email: ''
+        }
     });
 
-    const [loading, setLoading] = useState(false);
+    const createTransaction = useCreateTransaction();
+    const queryClient = useQueryClient();
     const [result, setResult] = useState(null);
-    const [error, setError] = useState(null);
-    const [validationError, setValidationError] = useState(null);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
+    const watchedCountry = watch('country') || 'US';
+
+    const getCurrencyInfo = (countryCode) => {
+        const mapping = {
+            'US': { sym: '$', code: 'USD' },
+            'GB': { sym: '£', code: 'GBP' },
+            'PK': { sym: 'Rs', code: 'PKR' },
+            'AE': { sym: 'د.إ', code: 'AED' },
+            'RU': { sym: '₽', code: 'RUB' }
+        };
+        return mapping[countryCode] || { sym: '$', code: 'USD' };
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setLoading(true);
-        setError(null);
-        setResult(null);
-        setValidationError(null);
+    const activeCurrency = getCurrencyInfo(watchedCountry);
 
-        // Build a strictly typed payload — ensure all numeric fields are parsed,
-        // and country is trimmed to the ISO 2-letter code (e.g. "PK - Pakistan" → "PK").
+    const onSubmit = (data) => {
+        setResult(null);
+
+        // Zod validation success. Trigger mutation.
         const payload = {
-            amount: parseFloat(formData.amount) || 0,
-            hour: parseInt(formData.hour, 10) || 0,
-            device_risk_score: parseFloat(formData.device_risk_score) || 0,
-            ip_risk_score: parseFloat(formData.ip_risk_score) || 0,
-            merchant_category: (formData.merchant_category || 'other').toLowerCase().trim(),
-            transaction_type: (formData.transaction_type || 'online').toLowerCase().trim(),
-            // Split "PK - Pakistan" → "PK", guard against missing value
-            country: (formData.country || 'US').split(' ')[0].trim().toUpperCase().substring(0, 2),
-            user_email: formData.user_email || null,
+            amount: parseFloat(data.amount) || 0,
+            hour: parseInt(data.hour, 10) || 0,
+            device_risk_score: parseFloat(data.device_risk_score) || 0,
+            ip_risk_score: parseFloat(data.ip_risk_score) || 0,
+            merchant_category: (data.merchant_category || 'other').toLowerCase().trim(),
+            transaction_type: (data.transaction_type || 'online').toLowerCase().trim(),
+            country: (data.country || 'US').split(' ')[0].trim().toUpperCase().substring(0, 2),
+            currency: getCurrencyInfo(data.country || 'US').code,
+            user_email: data.user_email || null,
         };
 
-        try {
-            const response = await predictTransaction(payload);
-            setResult(response ?? {});
-            if (onTransactionSubmitted) {
-                onTransactionSubmitted();
-            }
-        } catch (err) {
-            const status = err?.response?.status;
-            if (status === 422) {
-                // Extract Pydantic validation detail array or fallback string
-                const detail = err?.response?.data?.detail;
-                let msg = 'Invalid data formatting sent to server.';
-                if (Array.isArray(detail)) {
-                    msg = detail.map(d => `${d?.loc?.join(' → ')}: ${d?.msg}`).join(' | ');
-                } else if (typeof detail === 'string') {
-                    msg = detail;
+        createTransaction.mutate(payload, {
+            onSuccess: (response) => {
+                setResult(response ?? {});
+
+                // Form reset natively via react-hook-form
+                reset();
+
+                // Real-time Dashboard invalidation
+                queryClient.invalidateQueries({ queryKey: ['transactions'] });
+                queryClient.invalidateQueries({ queryKey: ['stats'] });
+
+                if (onTransactionSubmitted) {
+                    onTransactionSubmitted();
                 }
-                setValidationError(msg);
-            } else {
-                setError(err?.response?.data?.detail || err?.message || 'Failed to submit transaction.');
+            },
+            onError: (error) => {
+                toast.error(error.response?.data?.detail || 'Failed to process transaction.');
             }
-        } finally {
-            setLoading(false);
-        }
+        });
     };
 
     return (
@@ -90,8 +94,8 @@ export default function TransactionForm({ onTransactionSubmitted }) {
                     <div className="flex items-start gap-3">
                         <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={24} />
                         <div>
-                            <h3 className="text-lg font-bold text-red-400">Suspicious Fraud Alert</h3>
-                            <p className="text-red-300/80 text-sm mt-1">{result?.message || 'Transaction flagged for review.'}</p>
+                            <h3 className="text-lg font-bold text-red-400">High Fraud Risk — Pending Authorization</h3>
+                            <p className="text-red-300/80 text-sm mt-1">{result?.message || 'High fraud risk detected. Verification email sent for human authorization.'}</p>
 
                             {result?.reason_codes?.length > 0 && (
                                 <div className="mt-4 space-y-2">
@@ -121,72 +125,66 @@ export default function TransactionForm({ onTransactionSubmitted }) {
                 </div>
             )}
 
-            {/* 422 Validation Error Banner (amber/gold) */}
-            {validationError && (
-                <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/50 rounded-lg flex items-start gap-3">
-                    <AlertCircle className="text-amber-400 shrink-0 mt-0.5" size={20} />
-                    <div>
-                        <p className="text-amber-400 font-semibold text-sm">Validation Error (422)</p>
-                        <p className="text-amber-300/80 text-sm mt-0.5">{validationError}</p>
-                    </div>
-                </div>
-            )}
-
             {/* Generic Error Banner */}
-            {error && (
+            {createTransaction.isError && (
                 <div className="mb-6 p-4 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400 text-sm">
-                    {error}
+                    {createTransaction.error?.message || 'Failed to process transaction.'}
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-medium text-slate-300">Amount ($)</label>
+                        <label className="text-sm font-medium text-slate-300">
+                            Amount ({activeCurrency.sym} {activeCurrency.code})
+                        </label>
                         <input
-                            type="number" step="0.01" name="amount" required
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                            type="number" step="0.01"
+                            {...register("amount", { valueAsNumber: true })}
+                            className={`w-full bg-slate-900 border ${errors.amount ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none`}
                             placeholder="e.g. 1250.00"
-                            onChange={handleChange}
                         />
+                        {errors.amount && <span className="text-red-400 text-xs">{errors.amount.message}</span>}
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-300">Hour of Day (0-23)</label>
                         <input
-                            type="number" min="0" max="23" name="hour" required
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                            type="number" min="0" max="23"
+                            {...register("hour", { valueAsNumber: true })}
+                            className={`w-full bg-slate-900 border ${errors.hour ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none`}
                             placeholder="e.g. 14"
-                            onChange={handleChange}
                         />
+                        {errors.hour && <span className="text-red-400 text-xs">{errors.hour.message}</span>}
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-300">Device Risk Score (0-1)</label>
                         <input
-                            type="number" step="0.01" min="0" max="1" name="device_risk_score" required
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                            type="number" step="0.01" min="0" max="1"
+                            {...register("device_risk_score", { valueAsNumber: true })}
+                            className={`w-full bg-slate-900 border ${errors.device_risk_score ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none`}
                             placeholder="e.g. 0.85"
-                            onChange={handleChange}
                         />
+                        {errors.device_risk_score && <span className="text-red-400 text-xs">{errors.device_risk_score.message}</span>}
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-300">IP Risk Score (0-1)</label>
                         <input
-                            type="number" step="0.01" min="0" max="1" name="ip_risk_score" required
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
+                            type="number" step="0.01" min="0" max="1"
+                            {...register("ip_risk_score", { valueAsNumber: true })}
+                            className={`w-full bg-slate-900 border ${errors.ip_risk_score ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none`}
                             placeholder="e.g. 0.2"
-                            onChange={handleChange}
                         />
+                        {errors.ip_risk_score && <span className="text-red-400 text-xs">{errors.ip_risk_score.message}</span>}
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-300">Merchant Category</label>
                         <select
-                            name="merchant_category"
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                            onChange={handleChange}
+                            {...register("merchant_category")}
+                            className={`w-full bg-slate-900 border ${errors.merchant_category ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none`}
                             defaultValue="other"
                         >
                             <option value="electronics">Electronics</option>
@@ -198,14 +196,14 @@ export default function TransactionForm({ onTransactionSubmitted }) {
                             <option value="foreign_exchange">Foreign Exchange</option>
                             <option value="other">Other</option>
                         </select>
+                        {errors.merchant_category && <span className="text-red-400 text-xs">{errors.merchant_category.message}</span>}
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium text-slate-300">Country</label>
                         <select
-                            name="country"
-                            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
-                            onChange={handleChange}
+                            {...register("country")}
+                            className={`w-full bg-slate-900 border ${errors.country ? 'border-red-500' : 'border-slate-700'} rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none`}
                             defaultValue="US"
                         >
                             <option value="US">US - United States</option>
@@ -214,25 +212,26 @@ export default function TransactionForm({ onTransactionSubmitted }) {
                             <option value="RU">RU - Russia</option>
                             <option value="AE">AE - UAE</option>
                         </select>
+                        {errors.country && <span className="text-red-400 text-xs">{errors.country.message}</span>}
                     </div>
                 </div>
 
                 <div className="space-y-1.5">
                     <label className="text-sm font-medium text-slate-300">User Email <span className="text-slate-500">(Optional — triggers n8n verification)</span></label>
                     <input
-                        type="email" name="user_email"
+                        type="email"
+                        {...register("user_email")}
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all outline-none"
                         placeholder="user@example.com"
-                        onChange={handleChange}
                     />
                 </div>
 
                 <button
                     type="submit"
-                    disabled={loading}
+                    disabled={createTransaction.isPending}
                     className="w-full mt-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-medium py-3 rounded-lg shadow-lg shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
                 >
-                    {loading ? <Loader2 className="animate-spin" size={20} /> : 'Process Transaction'}
+                    {createTransaction.isPending ? <Loader2 className="animate-spin" size={20} /> : 'Process Transaction'}
                 </button>
             </form>
         </div>

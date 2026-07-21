@@ -17,10 +17,11 @@
 
 from sqlalchemy import (
     Column, Integer, String, Float, Boolean,
-    DateTime, Text, ForeignKey
+    DateTime, Text, ForeignKey, UniqueConstraint, Index
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.postgresql import JSONB
 import enum
 
 from .database import Base
@@ -33,6 +34,19 @@ from .database import Base
 # Enum matlab: Only specific values are allowed for a column.
 # Resist to enter the wrong values in Database
 #
+
+class UserRole(str, enum.Enum):
+    """
+    User Role Enum — RBAC (Role-Based Access Control) ke liye.
+
+    admin   → Full system access (view all, manage users)
+    analyst → Can view transactions and run queries
+    user    → Can only submit transactions and view own records
+    """
+    admin   = "admin"
+    analyst = "analyst"
+    user    = "user"
+
 
 class TransactionStatus(str, enum.Enum):
     """
@@ -96,17 +110,23 @@ class User(Base):
     """
     __tablename__ = "users"
 
-    id         = Column(Integer,              primary_key=True, index=True, autoincrement=True)
-    email      = Column(String(255),          unique=True,      nullable=False, index=True)
-    full_name  = Column(String(255),          nullable=False)
-    phone      = Column(String(20),           nullable=True)
-    hashed_password = Column(String(255),     nullable=False, default="unsecured")
-    is_active  = Column(Boolean,              default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    id              = Column(Integer,     primary_key=True, index=True, autoincrement=True)
+    email           = Column(String(255), unique=True,      nullable=False, index=True)
+    full_name       = Column(String(255), nullable=False)
+    phone           = Column(String(20),  nullable=True)
+    # ⚠️  SECURITY: No default value — password MUST be hashed before saving.
+    # Use auth_service.get_password_hash(password) before creating a User.
+    hashed_password = Column(String(255), nullable=False)
+    # RBAC: role determines what endpoints the user can access
+    role            = Column(String(20),  nullable=False, default=UserRole.user.value, index=True)
+    is_active       = Column(Boolean,     default=True,   nullable=False)
+    is_verified     = Column(Boolean,     default=False,  nullable=False)  # Email verified?
+    created_at      = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at      = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relationship: User → Transactions (1 user = many transactions)
-    transactions = relationship("Transaction", back_populates="user")
+    # Relationships
+    transactions   = relationship("Transaction",  back_populates="user")
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User  id={self.id}  email={self.email}>"
@@ -147,11 +167,14 @@ class Transaction(Base):
       ↳ audit_logs          (record of status changes)
     """
     __tablename__ = "transactions"
+    __table_args__ = (
+        Index('ix_transactions_user_id', 'user_id'),
+    )
 
     # ── Identity ──────────────────────────────────────────────
     id             = Column(Integer,   primary_key=True, index=True, autoincrement=True)
     transaction_id = Column(String(50), unique=True, nullable=False, index=True)
-    user_id        = Column(Integer,   ForeignKey("users.id"), nullable=True)
+    user_id        = Column(Integer,   ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     # ── Transaction Input Fields ───────────────────────────────
     amount             = Column(Float,        nullable=False)
@@ -163,7 +186,7 @@ class Transaction(Base):
     # ── ML Model Output Fields ─────────────────────────────────
     fraud_probability  = Column(Float,   nullable=True)   # ML score (0.0–1.0)
     fraud_flag         = Column(Boolean, nullable=True)   # Threshold ke baad set hota hai
-    reason_codes       = Column(Text,    nullable=True)   # JSON string
+    reason_codes       = Column(JSONB,   nullable=True)   # JSON array natively via PostgreSQL
     risk_level         = Column(String(20),   nullable=True)
     risk_score         = Column(Float,        nullable=True)
     transaction_type   = Column(String(50),   nullable=True)
@@ -219,13 +242,16 @@ class FraudAlert(Base):
       - email_recipient     → Who was it sent to?
     """
     __tablename__ = "fraud_alerts"
+    __table_args__ = (
+        Index('ix_fraud_alerts_transaction_id', 'transaction_id'),
+    )
 
     id             = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=False)
+    transaction_id = Column(Integer, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
 
     # Alert ki severity
     alert_level  = Column(String(20), default=AlertLevel.LOW.value, nullable=False)
-    reason_codes = Column(Text,       nullable=True)    # JSON string
+    reason_codes = Column(JSONB,      nullable=True)    # JSON array natively via PostgreSQL
 
     # n8n automation tracking
     n8n_webhook_sent    = Column(Boolean,                  default=False)
@@ -237,6 +263,8 @@ class FraudAlert(Base):
     email_sent_at   = Column(DateTime(timezone=True), nullable=True)
     email_recipient = Column(String(255),             nullable=True)
 
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     triggered_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationship: FraudAlert → Transaction (Many-to-One)
@@ -271,9 +299,12 @@ class VerificationToken(Base):
       - Two tokens are generated per transaction (approve + reject)
     """
     __tablename__ = "verification_tokens"
+    __table_args__ = (
+        Index('ix_verification_tokens_transaction_id', 'transaction_id'),
+    )
 
     id             = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=False)
+    transaction_id = Column(Integer, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
 
     # Unique secret token (UUID v4 format)
     token  = Column(String(100), unique=True, nullable=False, index=True)
@@ -287,6 +318,7 @@ class VerificationToken(Base):
     used_at    = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationship: VerificationToken → Transaction (Many-to-One)
     transaction = relationship("Transaction", back_populates="verification_tokens")
@@ -325,9 +357,13 @@ class AuditLog(Base):
       - TRANSACTION_BLOCKED       → Blocked by the system
     """
     __tablename__ = "audit_logs"
+    __table_args__ = (
+        Index('ix_audit_logs_user_id', 'user_id'),
+    )
 
     id             = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    transaction_id = Column(Integer, ForeignKey("transactions.id"), nullable=False)
+    transaction_id = Column(Integer, ForeignKey("transactions.id", ondelete="CASCADE"), nullable=False)
+    user_id        = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
 
     # Kya hua
     action      = Column(String(100), nullable=False)
@@ -344,6 +380,7 @@ class AuditLog(Base):
     ip_address = Column(String(45), nullable=True)   # IPv4 ya IPv6
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationship: AuditLog → Transaction (Many-to-One)
     transaction = relationship("Transaction", back_populates="audit_logs")
@@ -353,4 +390,52 @@ class AuditLog(Base):
             f"<AuditLog  id={self.id}  "
             f"action={self.action}  "
             f"by={self.performed_by}>"
+        )
+
+
+# ══════════════════════════════════════════════════════════════
+# TABLE 6: refresh_tokens  (JWT Refresh Token Store)
+# ══════════════════════════════════════════════════════════════
+
+class RefreshToken(Base):
+    """
+    Refresh Token Table — Server-side JWT refresh token storage.
+
+    Why store refresh tokens server-side?
+      - Enables token revocation (logout, stolen token handling)
+      - Prevents reuse after logout (blacklist mechanism)
+      - Supports per-device session management
+
+    Flow:
+      1. Login  → access_token (15 min) + refresh_token (7 days) created
+      2. Expired access_token → POST /api/v1/auth/refresh with refresh_token
+      3. Logout → refresh_token is_revoked = True (cannot be reused)
+    """
+    __tablename__ = "refresh_tokens"
+
+    id         = Column(Integer,     primary_key=True, index=True, autoincrement=True)
+    user_id    = Column(Integer,     ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Stored as a SHA-256 hash of the actual token (never store raw JWT)
+    token_hash = Column(String(255), unique=True, nullable=False, index=True)
+
+    # Device/session identifier (optional — helps multi-device users)
+    device_info = Column(String(255), nullable=True)
+
+    # Lifecycle
+    expires_at  = Column(DateTime(timezone=True), nullable=False)
+    is_revoked  = Column(Boolean, default=False,  nullable=False)
+    revoked_at  = Column(DateTime(timezone=True), nullable=True)
+
+    created_at  = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at  = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationship: RefreshToken → User (Many-to-One)
+    user = relationship("User", back_populates="refresh_tokens")
+
+    def __repr__(self):
+        return (
+            f"<RefreshToken  id={self.id}  "
+            f"user_id={self.user_id}  "
+            f"revoked={self.is_revoked}>"
         )

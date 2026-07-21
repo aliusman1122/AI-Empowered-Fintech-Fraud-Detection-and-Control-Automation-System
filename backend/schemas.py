@@ -17,30 +17,94 @@
 # =============================================================================
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Any
+import re
 
-from pydantic import BaseModel, Field
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, model_validator, field_validator
 from enum import Enum
+
+# =============================================================================
+# SECURE ROOT MODEL
+# =============================================================================
+class SecureBaseModel(BaseModel):
+    """
+    Root model enforcing basic XSS sanitization across all inherited schemas.
+    """
+    @model_validator(mode="before")
+    @classmethod
+    def sanitize_html_tags(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+            
+        blocked = [r"<script", r"<iframe", r"javascript:"]
+        for key, value in data.items():
+            if isinstance(value, str):
+                for pattern in blocked:
+                    if re.search(pattern, value, re.IGNORECASE):
+                        raise ValueError(f"Malicious HTML content blocked in field '{key}'")
+        return data
 
 # =============================================================================
 # AUTH SCHEMAS
 # =============================================================================
-class UserRegister(BaseModel):
-    email: EmailStr
-    full_name: str
-    phone: Optional[str] = None
-    password: str = Field(..., min_length=6)
+class UserRegister(SecureBaseModel):
+    email:     EmailStr
+    full_name: str      = Field(..., min_length=2, max_length=100)
+    phone:     Optional[str] = Field(default=None, max_length=20)
+    password:  str      = Field(
+        ...,
+        min_length=12,
+        description="Minimum 12 characters, at least 1 uppercase, 1 lowercase, 1 number, and 1 special symbol",
+    )
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
+    @field_validator("password")
+    @classmethod
+    def validate_password_complexity(cls, v: str) -> str:
+        from backend.core.security import validate_password
+        validate_password(v)
+        return v
+
+
+class UserLogin(SecureBaseModel):
+    email:    EmailStr
+    password: str      = Field(..., min_length=1)
+
 
 class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
-    user_id: int
-    email: str
+    """Returned by /login and /auth/refresh"""
+    access_token:  str
+    refresh_token: str
+    token_type:    str = "bearer"
+    user_id:       int
+    email:         str
+    role:          str
+    expires_in:    int = 900  # seconds (15 min)
+
+
+class RefreshTokenRequest(BaseModel):
+    """Body for POST /api/v1/auth/refresh"""
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    """Body for POST /api/v1/auth/logout"""
+    refresh_token: str
+
+
+class UserProfile(BaseModel):
+    """Returned by GET /api/v1/auth/me"""
+    id:          int
+    email:       str
+    full_name:   str
+    phone:       Optional[str]
+    role:        str
+    is_active:   bool
+    is_verified: bool
+    created_at:  Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
 
 class VerifyRequest(BaseModel):
     action: str = Field(..., description="'approve' or 'reject'")
@@ -56,7 +120,7 @@ class MerchantCategory(str, Enum):
     wire_transfer = "wire_transfer"
     foreign_exchange = "foreign_exchange"
     other = "other"
-class TransactionInput(BaseModel):
+class TransactionInput(SecureBaseModel):
     """
     The JSON body a user must send to POST /api/v1/transactions/predict.
 
@@ -115,6 +179,11 @@ class TransactionInput(BaseModel):
         default="US",
         description="Country where the transaction originated (2-letter code).",
         example="PK"
+    )
+    currency: Optional[str] = Field(
+        default="USD",
+        description="Dynamic string binding country of origin to local currency codes.",
+        example="PKR"
     )
 
     # Email for verification workflow (Phase 5)
@@ -201,9 +270,9 @@ class StatsResponse(BaseModel):
     Shows aggregate counts for the dashboard summary cards.
     """
     total_transactions:      int
-    approved_count:          int
-    blocked_count:           int
-    under_review_count:      int
+    fraud_alert_count:       int      # rejected + blocked
+    auto_approved_count:     int      # auto_approved only
+    pending_count:           int      # pending (awaiting email response)
     fraud_rate_percent:      float    # What % of all transactions were flagged
     avg_fraud_probability:   float    # Average fraud score across all transactions
     model_threshold:         float

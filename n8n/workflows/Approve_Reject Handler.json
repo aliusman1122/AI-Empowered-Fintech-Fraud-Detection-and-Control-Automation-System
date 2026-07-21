@@ -1,0 +1,231 @@
+{
+    "name": "Approve/Reject Handler",
+    "nodes": [
+        {
+            "parameters": {
+                "content": "##  n8n Workflow 2 (Approve/Reject Handler)\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
+                "height": 624,
+                "width": 1360,
+                "color": 6
+            },
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                240,
+                128
+            ],
+            "typeVersion": 1,
+            "id": "57ec8952-5204-4a92-b10e-b74c1495acca",
+            "name": "Sticky Note8"
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict",
+                        "version": 3
+                    },
+                    "conditions": [
+                        {
+                            "id": "da2446a2-4a78-45eb-8a15-11a559ea4589",
+                            "leftValue": "={{ $json.query.action }}",
+                            "rightValue": "approve",
+                            "operator": {
+                                "type": "string",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2.3,
+            "position": [
+                608,
+                384
+            ],
+            "id": "e53d14da-22b3-4569-b03e-fd9a8f22c03e",
+            "name": "If (action == approve)"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=http://host.docker.internal:8000/api/v1/transactions/{{ $json.query.id }}/approve\n",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                960,
+                192
+            ],
+            "id": "960e5676-f751-43d2-aec7-605b76d6d3cb",
+            "name": "HTTP Request: POST /approve",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=http://host.docker.internal:8000/api/v1/transactions/{{ $json.query.id }}/reject",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.4,
+            "position": [
+                960,
+                592
+            ],
+            "id": "e00dc973-dbd7-455a-8051-841b618133de",
+            "name": "HTTP Request: POST /reject",
+            "onError": "continueRegularOutput"
+        },
+        {
+            "parameters": {
+                "respondWith": "text",
+                "responseBody": "=={{ typeof $json.data === 'string' ? $json.data : typeof $json.body === 'string' ? $json.body : (typeof $json.error?.cause?.response?.data === 'string' ? $json.error.cause.response.data : (typeof $json.error?.cause?.error?.message === 'string' && $json.error.cause.error.message.includes('<h2>') ? $json.error.cause.error.message : (typeof $json.error?.description === 'string' && $json.error.description.includes('<h2>') ? $json.error.description : \"<h2>This authorization link has already been processed or expired.</h2>\"))) }}",
+                "options": {
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Content-Type",
+                                "value": "text/html"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.5,
+            "position": [
+                1280,
+                192
+            ],
+            "id": "9ea5fe2f-dc5f-4531-b0ca-f63733353dfa",
+            "name": "Respond to Webhook Success Message",
+            "notes": "Thank you for your response"
+        },
+        {
+            "parameters": {
+                "content": "## Fraud Alert Email\n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
+                "height": 192,
+                "width": 384
+            },
+            "type": "n8n-nodes-base.stickyNote",
+            "position": [
+                224,
+                -128
+            ],
+            "typeVersion": 1,
+            "id": "9a0f0076-d01a-42c0-8126-496c38224ee8",
+            "name": "Sticky Note9"
+        },
+        {
+            "parameters": {
+                "path": "transaction-response",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2.1,
+            "position": [
+                320,
+                384
+            ],
+            "id": "5104c12c-c5e2-4871-85d8-e5238d7b1fd7",
+            "name": "Webhook (get, /transaction-response)",
+            "webhookId": "4705e67d-268c-432c-a6d4-83823f55bc3a"
+        },
+        {
+            "parameters": {
+                "respondWith": "text",
+                "responseBody": "=={{ typeof $json.data === 'string' ? $json.data : typeof $json.body === 'string' ? $json.body : (typeof $json.error?.cause?.response?.data === 'string' ? $json.error.cause.response.data : (typeof $json.error?.cause?.error?.message === 'string' && $json.error.cause.error.message.includes('<h2>') ? $json.error.cause.error.message : (typeof $json.error?.description === 'string' && $json.error.description.includes('<h2>') ? $json.error.description : \"<h2>This authorization link has already been processed or expired.</h2>\"))) }}",
+                "options": {
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "=Content-Type",
+                                "value": "text/html"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.5,
+            "position": [
+                1296,
+                592
+            ],
+            "id": "1e3bdb8d-3309-453f-addb-d8c0b9d99352",
+            "name": "Respond to Webhook Block Message"
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "If (action == approve)": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request: POST /approve",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "HTTP Request: POST /reject",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP Request: POST /approve": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook Success Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP Request: POST /reject": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook Block Message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook (get, /transaction-response)": {
+            "main": [
+                [
+                    {
+                        "node": "If (action == approve)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": true,
+    "settings": {
+        "executionOrder": "v1",
+        "binaryMode": "separate"
+    },
+    "versionId": "8580ba05-838e-46cd-b1af-819066f7fc39",
+    "meta": {
+        "instanceId": "1b727851e7363c90b95febdbdbb95d0a6da35bc5056a56899bc7661fd43d54bc"
+    },
+    "id": "BK4fDse5LXmC84xq",
+    "tags": []
+}
